@@ -58,6 +58,15 @@ class RowFileTests(unittest.TestCase):
             with self.subTest(a=a, b=b), self.assertRaises(dyadlib.TransitionError):
                 dyadlib.require_transition(a, b)
 
+class ReadRowsAtBaseTests(unittest.TestCase):
+    def test_a_base_without_a_store_reads_as_no_rows(self):
+        """prompt-therapy #5: a fresh system's first push judges a base that holds no d-work store at all."""
+        import subprocess, tempfile
+        with tempfile.TemporaryDirectory() as t, unittest.mock.patch.dict("os.environ", {"DYAD_INSTANCE": str(Path(t) / "agent-corpus")}):
+            run = lambda *a: subprocess.run(["git", *a], cwd=t, check=True, capture_output=True, env=dyadlib.git_env())
+            run("init", "-q"); run("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "root")
+            self.assertEqual(dyadlib.read_rows(Path(t), at="HEAD"), [])
+
 class RowModeTests(unittest.TestCase):
     """d-work #290: `mode` is OPTIONAL_FIELDS, not FIELDS. It cannot be FIELDS — `parse_row_file` raises on a
     missing FIELDS key and the plan gate parses rows at historical commits, none of which carry the line."""
