@@ -2,7 +2,7 @@
 
 From: `pltrinh1122/prompt-therapy`, unit `program-46f1915d`, d-work #4 (plan `agent-corpus/d-work/plans/4.md`, its
 plan-`Y` given 2026-11-14). To: `pltrinh1122/dyad-system`, the desk that spawned this system under its d-work #702.
-Sent only on the operator's `Y`. Two items, each to be judged there by Rule-3 Intake and split by `dmc:intake-split`.
+Sent only on the operator's `Y`. Three items, each to be judged there by Rule-3 Intake and split by `dmc:intake-split`.
 
 ## Item 1 — enhancement (proposed outcome: upstream core)
 
@@ -47,3 +47,13 @@ installed from dyad-system commit `7e152f9`. How it reproduces: an empty reposit
 `main`; `dyad install` into a clone; `git config core.hooksPath dyad/hooks`; commit on a branch; `git push`. Observed
 in prompt-therapy on 2026-11-14 (its incident log). `dyad board advance` refuses for the same cause ("no row #N on
 origin/main"). Item 1's act 3 avoids it; the reader handling an absent store would remove it.
+
+## Item 3 — defect (proposed outcome: upstream core)
+
+What: a fresh install of core 1.3.2 fails its own `syseng/naming` guard, so every guarded push of the new system is
+refused. Where: `dyad/templates/rows-README.md` and `crafts/sysadmin/templates/events-README.md`, both installed by
+`dyad install`: "is not lowercase and not on the closed uppercase list (rules/naming.md L4; a new name)"; the suite's
+`guards.test_naming.LiveTests.test_live_repo_passes_and_every_kind_is_a_row` (`crafts/syseng/tests`) fails with it.
+How it reproduces: as item 2, then push any branch whose tree holds the installed core. Observed in prompt-therapy on
+2026-11-14, from prompt-therapy #5. While it stands this system cannot land its own core through its hook, and the
+hook is not bypassed (Rule-1).
