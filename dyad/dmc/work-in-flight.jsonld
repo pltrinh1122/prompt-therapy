@@ -1,0 +1,164 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:dyad-operator/work-in-flight",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "work-in-flight",
+  "name": "Work in flight",
+  "description": "How old a piece of work in flight must be before the home's read (dyad board resume) shows it.",
+  "dyad:decides": "Has this piece of work in flight been still long enough for the home's read to show it?",
+  "dyad:inputs": [
+    "inbox files and their read markers",
+    "board entries, their phase and their since",
+    "stored plans, PR heads and the promised list",
+    "the preferences inflight-unread-hours, inflight-planned-quiet-days, inflight-unplanned-hours, inflight-pr-still-days, inflight-promise-days, inflight-question-hours and inflight-done-ready-hours",
+    "the hosting's open PRs and the origin branches, read with GITHUB_TOKEN, each kind printing one skip line without them"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "unread",
+      "name": "A relay or notice left unread",
+      "dyad:when": "a relay or notice has no read marker after inflight-unread-hours",
+      "dyad:then": "the home rings the unit's doorbell"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "quiet",
+      "name": "A planned row gone quiet",
+      "dyad:when": "a planned row whose board entry waits on a unit has not moved for inflight-planned-quiet-days",
+      "dyad:then": "the home asks the owner by relay what holds it"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "unplanned",
+      "name": "an open row with no plan file",
+      "dyad:when": "an open row, not a child or under a mandate, has no plan file after inflight-unplanned-hours",
+      "dyad:then": "the home asks the owner by relay what holds it"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "pr",
+      "name": "a PR whose head has not moved",
+      "dyad:when": "an open PR's head is unchanged for inflight-pr-still-days",
+      "dyad:then": "the home asks the owner by relay what holds it"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "promise",
+      "name": "A promise still listed",
+      "dyad:when": "a promise has been listed for inflight-promise-days",
+      "dyad:then": "the home opens its row by the operator's Y, or drops the promise"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "question",
+      "name": "a recorded question",
+      "dyad:when": "a question recorded to the operator is older than inflight-question-hours",
+      "dyad:then": "the home asks it"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "done-ready",
+      "name": "A drafted Done not asked",
+      "dyad:when": "a phased board entry has been in done-ready, its Done question drafted and not asked, for inflight-done-ready-hours",
+      "dyad:then": "the home asks the Done question or names what holds it; every other phase keeps W11's fixed age, an asked phase 24 h and every other 3 days"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "W4-5",
+      "name": "a PR or branch with no live row",
+      "dyad:when": "an open PR cites no d-work #N of a live row, or an origin branch whose tip is not on main has no open PR and no commit citing a live row",
+      "dyad:then": "the home proposes a close or a delete; deleting a branch is destructive, so each deletion is its own question to the operator (Rule-8), never folded into another"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "W7",
+      "name": "a board unit unknown",
+      "dyad:when": "a board entry names a unit missing from its cabinet's unit table, or waits on a unit whose presence is stale",
+      "dyad:then": "the home fixes the board, write-ahead (Rule-3)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "W9",
+      "name": "an operator wait with no question",
+      "dyad:when": "a live row waits on the operator with no question recorded",
+      "dyad:then": "reported once and again only if it changes; the home asks it, or records the question it waits on"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "W10",
+      "name": "a report newer than the board",
+      "dyad:when": "an owner posted a report on the row after the board entry's since",
+      "dyad:then": "the home reads the report and fixes the board"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "young",
+      "name": "Each threshold is a minimum age",
+      "dyad:when": "the work is younger than its threshold",
+      "dyad:then": "nothing is shown; the home reads at each operator prompt, so each threshold is a minimum"
+    }
+  ],
+  "dyad:tunables": [
+    {
+      "dyad:preference": "inflight-unread-hours",
+      "dyad:defaultValue": "4",
+      "dyad:allowed": "a positive integer (hours)",
+      "dyad:readBy": "scripts/hygiene.py"
+    },
+    {
+      "dyad:preference": "inflight-planned-quiet-days",
+      "dyad:defaultValue": "3",
+      "dyad:allowed": "a positive integer (days)",
+      "dyad:readBy": "scripts/hygiene.py"
+    },
+    {
+      "dyad:preference": "inflight-unplanned-hours",
+      "dyad:defaultValue": "24",
+      "dyad:allowed": "a positive integer (hours)",
+      "dyad:readBy": "scripts/hygiene.py"
+    },
+    {
+      "dyad:preference": "inflight-pr-still-days",
+      "dyad:defaultValue": "3",
+      "dyad:allowed": "a positive integer (days)",
+      "dyad:readBy": "scripts/hygiene.py"
+    },
+    {
+      "dyad:preference": "inflight-promise-days",
+      "dyad:defaultValue": "3",
+      "dyad:allowed": "a positive integer (days)",
+      "dyad:readBy": "scripts/hygiene.py"
+    },
+    {
+      "dyad:preference": "inflight-question-hours",
+      "dyad:defaultValue": "24",
+      "dyad:allowed": "a positive integer (hours)",
+      "dyad:readBy": "scripts/hygiene.py"
+    },
+    {
+      "dyad:preference": "inflight-done-ready-hours",
+      "dyad:defaultValue": "4",
+      "dyad:allowed": "a positive integer (hours)",
+      "dyad:readBy": "scripts/hygiene.py"
+    }
+  ],
+  "dyad:judgedBy": {
+    "dyad:kind": "mechanical",
+    "dyad:implementation": "scripts/hygiene.py"
+  },
+  "isPartOf": "urn:dyad:craft:dyad-operator",
+  "dyad:home": "playbooks/d-work.md",
+  "dyad:alsoIn": [
+    "scripts/automaton.py"
+  ],
+  "dyad:owner": "Rule-3"
+}

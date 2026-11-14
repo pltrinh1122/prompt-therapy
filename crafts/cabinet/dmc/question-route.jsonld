@@ -1,0 +1,55 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:cabinet/question-route",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "question-route",
+  "name": "Question route",
+  "description": "Where a question a unit owes the operator is asked: in its own chat when it is paired (a dyad unit), relayed through the home when it is a solo.",
+  "dyad:decides": "Where is this unit's question asked?",
+  "dyad:inputs": [
+    "the unit",
+    "the preference paired-units",
+    "whether the unit is the home"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "attended",
+      "name": "paired",
+      "dyad:when": "the unit is paired (a dyad unit)",
+      "dyad:then": "asked in the unit's own chat; the answer lands in that unit's provenance"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "relayed",
+      "name": "not paired",
+      "dyad:when": "the unit is not paired (a solo)",
+      "dyad:then": "asked in the home's chat, unit named, in the form relay-form names; the answer is relayed back verbatim"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "leader",
+      "name": "the home itself",
+      "dyad:when": "the unit is the home",
+      "dyad:then": "asked in the home's chat"
+    }
+  ],
+  "dyad:judgedBy": {
+    "dyad:kind": "declared",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:cabinet",
+  "dyad:home": "docs/operating-guide.md",
+  "dyad:alsoIn": [
+    "rules/organization.md"
+  ],
+  "dyad:owner": "cabinet:organization"
+}

@@ -1,0 +1,167 @@
+# Naming (syseng craft, Tended rule)
+
+Read by every core Rule and craft rule that names a file, symbol or token pattern (the `owner`
+column below): the core keeps the *sentence* that a pattern exists ("a row file is
+`<instance>/d-work/rows/<id>.md`"); this rule keeps the one table every pattern belongs to, so
+that a pattern is defined once and drift is found by a guard, not by reading eleven Rules
+(#113 named the drift; plan #162 (a)1 collected the table). Terms (`naming pattern`, `allow
+line`): `../vocabulary/CRAFT.md`. Guard: `../guards/naming.py` (registry label `syseng/naming`,
+entity `name`), data `../guards/naming_rules.txt`. Rationale: `../docs/naming.md`.
+
+## The table
+One row per pattern. `checkable` says whether `naming.py` verifies it (from a `kind:`, `symbol:`
+or `env:` line of `naming_rules.txt`); a row marked *no* is inference, or another guard's. The
+guard fails on a `kind:` whose pattern is not in this table, so the two cannot drift.
+
+| pattern | names | owner | example | checkable |
+|---|---|---|---|---|
+| `dyad/rules/RULE-<n>-<slug>.md` | an Agent Rule file | Rule-4 | `RULE-12-verifiable-code.md` | yes (`<n>` unique) |
+| `crafts/<craft>/rules/<slug>.md` | a Tended rule of a craft | Rule-11 (a craft's tree) | `crafts/syseng/rules/naming.md` | yes (kebab; `README.md` allowed) |
+| `crafts/<craft>/` (+ `VERSION`, `README.md`, `MANIFEST.md`, `rules/`, `vocabulary/CRAFT.md`, `templates/`, `guards/`, `tests/`, `falsification/`, `docs/`, `projectors/`, `scripts/`, `server/`, `dmc/`, `playbooks/`, `runbooks/`) | a craft corpus tree | Rule-11 (the sysarch `distribution.md`) | `crafts/sysadmin/` | yes (allowed children) |
+| `<instance>/d-work/rows/<id>.md` | a row file | Rule-16 | `rows/162.md` | yes (`<id>` digits, unique; `README.md` allowed) |
+| `<instance>/d-work/plans/<id>.md` | a plan file | Rule-15 | `plans/162.md` | yes |
+| `<instance>/d-work/sessions/<id>.md` | a session presence file | Rule-16 | `sessions/lan-git-install.md` | yes (`<id>` a path-safe session name, no digits-only requirement) |
+| `<instance>/falsification/<slug>.md` | an instance falsification record | Rule-9 | `sysarch-extraction.md` | yes (kebab) |
+| `dyad/falsification/rules/rule-<n>-<slug>.md` | a Rule's falsification record (package) | Rule-9 | `rule-12-verifiable-code.md` | yes (`rule-<n>-`; `rules-9-10-promotion.md` fits; `rule-sets.md` is an allow line) |
+| `crafts/<craft>/falsification/rules/<slug>.md`, `crafts/<craft>/falsification/<slug>.md` | a craft rule's record; a craft's own record | Rule-9 (records travel with their rules) | `crafts/syseng/falsification/rules/naming.md` | yes (kebab) |
+| `<instance>/audits/<YYYY-MM-DD>-<slug>.md`, `<instance>/audits/INCIDENTS.md` | an audit; the incident log | frame / Rule-3 | `2026-09-13-guards-vs-rule-12.md` | yes |
+| `dyad/guards/<corpus>/<entity>.py` | a core guard module | Rule-11 property 1 (the sysarch `guards.md`) | `guards/agent/rows.py` | yes (snake; `<corpus>` a zone; `_`-prefixed is not a guard) |
+| `crafts/<craft>/guards/<entity>.py` | a craft guard module | the sysarch `guards.md` | `crafts/syseng/guards/naming.py` | yes |
+| `<entity>_rules.txt` beside its guard | a guard's data file | the sysarch `guards.md` | `manifest_rules.txt` | yes (`<entity>.py` exists beside it) |
+| `crafts/<craft>/guards/<receiver>_contrib.txt` | a craft's own contribution to a syseng guard's data | this craft, Craft contribution below | `crafts/sysadmin/guards/naming_contrib.txt` | yes (`<receiver>` one of `naming`, `invariants`) |
+| `dyad/bin/<name>`, `dyad/hooks/<hook>` tracked `100755` | a package file the host executes by name: the CLI entrypoint, the hooks an install points `core.hooksPath` at | Rule-11 p5 (the hook ships at `dyad/hooks/pre-commit`) | `dyad/hooks/pre-commit` | yes (`mode:` line; the **tracked** mode, never the bit on disk) |
+| `crafts/<craft>/templates/*.sh`, `crafts/<craft>/server/*.sh` tracked `100755` | a shell file a craft ships to be run: an ops-script skeleton, a container entrypoint | the sysadmin `ops-scripts.md`; the sysadmin `server-instances.md` | `crafts/sysadmin/server/entrypoint.sh` | yes (`mode:` line) |
+| `dyad/tests/test_<name>.py` ↔ `dyad/scripts/<name>.py`; `dyad/tests/guards/<corpus>/test_<entity>.py` ↔ the core guard; `crafts/<craft>/tests/guards/test_<entity>.py` ↔ the craft guard; `crafts/<craft>/tests/test_<name>.py` ↔ a craft projector or script | a test module and its mapping | this craft, `verifiable-code.md` (from Rule-12) | `test_dyadlib.py` | shape yes; the mapping by `tests.py`, not `naming.py` |
+| `crafts/<craft>/projectors/project_<surface>.py` ↔ `crafts/<craft>/tests/test_project_<surface>.py` | a projector and its test | the sysarch `projection.md` | `project_erd.py` | yes |
+| `dyad/scripts/project_<surface>.py` ↔ `dyad/tests/test_project_<surface>.py` | the core craft's projector and its test — one that renders the core's own stores (d-work #378, the countersign projector consolidated into the core) | the sysarch `projection.md` p2, p4 | `project_countersign.py` | yes (the test by the `dyad/tests/test_<name>.py` mapping above) |
+| `check_rule_<n>` | a Rule's own check function in the runner | Rule-11 (S4) | `check_rule_12` | yes (symbol) |
+| `INVARIANTS`, `check_invariants`, `InvariantError` | the invariant protocol names | this craft, `invariants.md` | `dyadlib.INVARIANTS` | yes (symbol) |
+| `ENTITY`, `CORPUS`, `FIELDS`, `TRANSACTION`, `check_package`, `check_transaction`, `describe`, `summary` | the guard contract symbols | the sysarch `guards.md` (`dyadlib.CONTRACT`) | — | yes (symbol; the registry's contract check too) |
+| `main` | a projector's entrypoint | the sysarch `projection.md` p4 | `project_erd.main` | yes (symbol) |
+| `.github/workflows/dyad-<slug>.yml` | a package workflow wrapper | Rule-11 p2 (Rule-14 library) | `dyad-package.yml` | yes (prefix; an unprefixed workflow is instance and an allow line) |
+| `dyad-<version>.tar.gz`, `<craft>-<version>.tar.gz`, `vMAJOR.MINOR.PATCH` = `v` + `VERSION` | a release archive and tag | Rule-11 p4 | `dyad-0.1.0.tar.gz`, `v0.1.0` | tag: no (The World); `VERSION` shape: Rule-11's check and the craft guard |
+| `DYAD_<NAME>` | an environment variable the package reads | Rule-11 p3 | `DYAD_INSTANCE`, `DYAD_OPS`, `DYAD_RUNBOOKS`, `DYAD_ROLE`, `DYAD_NO_NESTED_TESTS`, `DYAD_HOST`, `DYAD_HOST_ZONE` | yes (`env:` line; every variable the package code reads is listed, and every listed one is read) |
+| `dyad <noun> <verb>` | a CLI command | preference `cli-pattern` (#152) | `dyad check --evidence` | no (inference over `package.py`'s usage text) |
+| `<key>` kebab-case | a preference key | frame (`preferences.py`) | `merge-disposition` | no (the preferences guard's shape check) |
+| `<term>` lower-case noun phrase | a vocabulary term | Rule-6 | `plan file` | no (prose; Rule-6's guard) |
+| `<ops>/<d-work>-<hN>-<slug>.sh`, `<same>-undo.sh`, `ops/*.log` (generated) | an ops script, its undo, its log | the sysadmin `ops-scripts.md` (Rule-18 kernel) | `135-h4-etc-hosts.sh` | yes (shape; its tracked `100755` is `ops_scripts.py`'s, part of the Rule-18 form — not a `mode:` line here: one owner) |
+| `<runbooks>/<instance>.md`, `<runbooks>/events/<instance>.jsonl` | a run-book and its event store | the sysadmin `server-instances.md` (Rule-19 kernel) | `git-server.md` | yes |
+| `<instance>-<utc ts>-<name>` | an event id | the sysadmin `server-instances.md` | `git-server-20260914T101500Z-status` | no (the events guard already) |
+| `#<id>`, `d-work #<id>`, `merge #<n>`, `<date> <Y\|N> <plan\|done\|merge #n\|reason>` | a reference token; a disposition entry | Rule-3 / Rule-20 | `d-work #162` | no (Rule-20 resolves; the rows guard has the shape) |
+| `Y/N: proceed with #<id> as planned?`, `Y/N: Done with #<id> <title> (merges PR #a, #b)?`, `Y/N: run <action>?`, `Y/N: release vX.Y.Z?` | counter-prompt forms | Rules 3, 8, 11 | — | no (chat, not repo) |
+| `<instance>/projections/<surface>.html` (generated) | a projection | the sysarch `projection.md`; `determinism.md` here | `erd.html` | yes (a `generated:` pattern of `package_rules.txt`; never tracked, Rule-11's check) |
+| `dyad/templates/<Name>` (seeds; `package.TEMPLATES` maps the installed ones; a `.txt` seed is hand-copied, #378) | an instance seed | Rule-11 | `INCIDENTS.md`, `self-diagnostic-levels.txt` | yes (shape: `VERSION`, `.md` or `.txt`); every `TEMPLATES` key exists: the runner's `templates-exist` invariant |
+| `dyad/templates/commands/<command>.md` | a command adapter the core ships, copied by hand into the harness's `.claude/commands/` (the adapter, never the artifact; #115, #378) | Rule-11 (the countersign model's §6, `dyad/playbooks/countersign-model.md`) | `falsify.md` | yes (kebab) |
+| `guard:<corpus>/<entity>.py`, `world`, `import:<module>` | a resolver token; a manifest token | Rule-20 / Rule-14 | `guard:agent/vocabulary.py` | no here (shape in the references and manifest guards; the register's `resolver-shape` invariant) |
+| `<YYYY-MM-DD>` dates in rows, change log, audits | a date | Rule-3 / Rule-8 | `2026-09-14` | no (the rows and changelog guards already) |
+| `# ceiling: <what is bounded>; #<row>` | a deliberate scope ceiling in code or rule text, and the backlog row tracking when to lift it | Rule-13 (a ceiling is a scoped decline of rung 1, `verifiable-code.md` p7) | `# ceiling: global lock, per-account locks if throughput matters; #<id>` | no (inference; #96 may wire it into the Rule-20 register) |
+
+## The guard
+`naming.py` reads `naming_rules.txt`: a `kind:` line per checkable path row (`kind: <pattern> =
+<path glob> = <regex over the whole path>`; a named group `id` must be unique within the kind, a
+group `beside` names `<dir>/<beside>.py` that must exist); a `mode:` line per mode row (`mode:
+<pattern> = <path glob> = <tracked mode>`): every selected path is tracked at that mode in git's
+index (`dyadlib.tracked_mode`), never judged by the bit on disk — with `core.fileMode=false` (an
+NTFS checkout) every file reads 755 on disk whatever git holds, which is how an entrypoint tracked
+`100644` reached an image and could not exec (#135, #141); a path not yet in the index warns
+(`untracked: disk mode used`) and falls back to the disk bit. A `mode:` pattern must be a table row
+like a `kind:`. One owner per path: the mode of an ops script belongs to the Rule-18 form
+(`crafts/sysadmin/guards/ops_scripts.py`), so `<ops>/*.sh` is not a `mode:` line. A `symbol:` line per symbol row
+(`symbol: <module glob> : <name> …`, each a plain name the module must define at top level or a
+regex at least one top-level name matches); one `env:` line naming every `DYAD_<NAME>` the package
+code reads; and `allow:` lines. Every path the tree holds (tracked or not yet committed) that a
+glob selects must match its regex or be allowed. An `allow: <path> # <reason>` line without a
+reason fails, a stale one (the path is gone) fails when the path is package (`dyad/`, `crafts/`)
+and warns when it is instance (the data travels to installs whose instance differs), one the path no
+longer needs warns — the list only shrinks, and its count is printed in the summary. No pattern is grandfathered by date.
+
+## Craft contribution
+A pattern whose paths exist only when another craft does — sysadmin's ops scripts and run-books,
+lan-git's workflow files — cannot live as a native row here without either failing this table's
+own guard the moment that craft is absent, or asking every system to author rows for crafts it may
+never install. Two kinds of row are foreign in exactly this sense and both retire by the same
+mechanism (d-work #15):
+- **A native row whose `owner` names another craft's rule but whose *paths* are this table's own
+  business only while that craft is installed** — an interim, never contributed: `env: NAME@craft`
+  (`env_scope`) defers the unlisted/stale check until the craft is present; an `exempt:` glob under
+  `crafts/<craft>/` in `invariants_rules.txt` warns rather than fails when no such craft exists.
+  Both stay exactly as they are; contribution does not remove them.
+- **A row a craft can ship for itself**, once its own guard exists to receive it:
+  `crafts/<craft>/guards/naming_contrib.txt` (read by `naming.contrib_rules`, same `kind:` /
+  `mode:` / `symbol:` / `env:` / `allow:` line format as `naming_rules.txt`) and
+  `crafts/<craft>/guards/invariants_contrib.txt` (read by `invariants.contrib_exemptions`, `exempt:`
+  lines, same format as `invariants_rules.txt`). Both are discovered from every *installed* craft
+  (`dyadlib.craft_dirs`) and merged into the checks that run over the tree, so a contributed `kind:`
+  or `mode:` row is enforced exactly like a native one. Two differences, both by design: a
+  contributed `kind:`/`mode:` pattern is **not** required to be a row of *this* table — it is
+  documented in the contributing craft's own rule, which owns it — and a malformed or stale
+  contributed line is reported naming the contributing craft's own file, never `naming_rules.txt` or
+  `invariants_rules.txt`. Removing a craft simply removes its rows from every check; nothing here
+  goes stale because a craft left, the opposite of a native row's fate. A row that fits this second
+  kind retires from the `@craft`/`exempt:`-under-`crafts/` interim only once the owning craft ships
+  its own contributed file — moving it is that craft's own d-work, not syseng's, since the rows to
+  delete live in this repo's crafts and syseng cannot know their new home until it exists.
+
+**Contributed `kind:` widening (D4, #100).** A path is valid when every *selecting* native kind
+(one whose glob matches it) accepts it by regex — native kinds stay conjunctive among themselves,
+so a narrow native pattern still sharpens a broader native one (the repo's own
+`crafts/<craft>/guards/<receiver>_contrib.txt` kind narrows the broader `crafts/<craft>/`
+catch-all this way; disjunction must never leak between two native kinds). A contributed kind
+*rescues* a path only when the selecting native kinds do not all accept it: a craft may widen a
+native shape — one it needs but a native pattern alone rejects — without a per-path `allow:` line
+for every instance of that shape. A path only contributed kinds select (no native kind touches it
+at all) needs every one of those to accept, the same as a native-only path. Tightening a native
+pattern is not supported by this mechanism — no installed craft needs it, and `naming.md` stays
+the place to tighten a native pattern directly.
+
+## Case and separators: the standard (dyad-system #553)
+Every label is lowercase except where one of the exceptions below makes its case meaningful, and its separator
+says what kind of label it is:
+- **kebab-case** (`-`) for files, directories, CLI verbs and flags, preference, row, board and front-matter keys,
+  unit names, tags and branches;
+- **snake_case** (`_`) only for Python identifiers;
+- **`.`** only for extensions, versions and defined suffixes (`.local.txt`, `.read`);
+- **camelCase** only where an outside schema defines it;
+- in prose, a hyphen only where the hyphenated form is the term (`d-work`, `write-ahead`).
+Terms are lowercase nouns, the two parties included (operator, agent). A literal token keeps its case: the answer
+token `Y` (and `N`) keeps its capital wherever it appears in a term, so the terms are `plan-Y` and `done-Y`, as the
+ledger records `Y plan` and `Y done`. Do not use "bond" for the pair: dyad-bond is another system.
+
+**The closed uppercase list.** These names keep their case and nothing new joins them without a change to this list:
+the ecosystem names `README.md`, `LICENSE`, `CLAUDE.md` and `CHANGELOG.md`, which tools outside this system expect
+spelled so; and `RULE-<n>-<slug>.md`, `VERSION`, `MANIFEST.md`, `CRAFT.md`, `VOCABULARY.md`,
+`PREFERENCES.md`, `MANDATES.md`, `INCIDENTS.md`, `LEDGER.md` (rendered), `BUNDLE.md`, `INFRASTRUCTURE.md`,
+`REGISTRY.md`. Renaming them would move about 1,250 references and the patterns guards match; a rename is its own
+later d-work. Python class names and constants, and environment variables (`DYAD_<NAME>`), keep Python's and the
+shell's conventions. An ISO 8601 basic UTC stamp keeps its `T` and `Z` (`20261102T182557Z`, the inbox's
+message names), because that standard defines the designators' case (L1 below).
+
+## Case: who must type it exactly (dyad-system #553)
+Case and spelling matter only where a machine compares a string literally. The operator's text is **read**: prompts
+and dispositions go to an inferring reader, so they never need exact case or spelling. The agent's text is
+**written**: it normalizes what it reads into the canonical form of every place a machine reads. A provenance record
+keeps the operator's words as typed and never corrects them; the canonical reading lives in the agent's own text (the
+plan's intent as read, the row, the board).
+
+The decision for one label (the criterion record `dyad/dmc/label-case.jsonld`, inputs L1–L6), first match wins:
+| # | question | outcome |
+|---|---|---|
+| L1 | Does an outside system define its case (an environment variable, a Python identifier, a JSON-LD or schema.org key, a git hex sha, an ISO 8601 basic stamp's `T` and `Z`)? | **outside case kept**: the outside system's case, listed among the exceptions above |
+| L2 | Is it ledger grammar the agent's tooling writes (`Y plan`, `Y done`, `N amend`)? | **ledger grammar exact**: exact case, written only by tooling, never typed by the operator |
+| L3 | Is it an ecosystem file name or on the closed uppercase list? | **listed exception**: kept as it is |
+| L4 | Anything else: files, keys, flags, unit names, tags, branches, terms | **lowercase kebab-case**: canonical lowercase, stored lowercase |
+| L5 | Could two labels differ only by case? | **unique under casefold**: forbidden, since a case-insensitive filesystem would merge them |
+| L6 | Does a machine compare it where the operator types it directly, without the agent in between? | **casefold and warn**: the comparing tool casefolds the input and warns when it is not canonical, unless L1 makes case meaningful |
+
+**The rare conditions.** The operator's own keystrokes reach a machine without the agent between them only in three
+places: a value entered in a settings file or UI (a preference value, a repository variable such as
+`RELEASE_APPROVAL`, a branch typed in the hosting's editor), where tooling casefolds and warns (L6); a credential or
+secret, exact by nature and never typed into a prompt; and a command the operator runs, which arrives as an ops script
+to paste, never to retype (the sysadmin craft's `ops-scripts.md`). Everywhere else the reader normalizes: `Y`, `y` and
+`yes` are one answer, `N`, `n` and `no` another; `Done-y`, `done-Y` and `done y` name one term; `Cos` and `COS` one
+title. A misspelling is read as the nearest defined term when every reading leads to the same act; only when two
+readings lead to different acts is the operator asked, and never about spelling alone.
+
+## Inference, stated
+Whether a name is *apt* is inference. The rows marked *no* are checked elsewhere or not at all,
+as the column says.

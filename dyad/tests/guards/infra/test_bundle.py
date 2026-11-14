@@ -1,0 +1,376 @@
+import sys, tempfile, unittest
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+import dyadlib
+bd = dyadlib.load_guard("infra", "bundle")
+
+BUNDLE = """version: 0.5.0
+
+| component | version |
+|-----------|---------|
+| dyad-operator | 0.5.0 |
+| sysarch | 0.1.1 |
+| syseng | 0.1.2 |
+"""
+LIVE = {"dyad-operator": "0.5.0", "sysarch": "0.1.1", "syseng": "0.1.2"}
+
+def tree():
+    """A tmp (pkg, root) pair: pkg/VERSION plus pkg.parent/crafts/<name>/VERSION for LIVE, and pkg
+    is itself under root so `bundle_path(root)` and `pkg` agree on one tree, as the real repo does."""
+    d = Path(tempfile.mkdtemp())
+    pkg = d / "dyad"; pkg.mkdir()
+    (pkg / "VERSION").write_text(LIVE["dyad-operator"] + "\n")
+    crafts = d / "crafts"
+    for name, ver in LIVE.items():
+        if name == "dyad-operator":
+            continue
+        c = crafts / name; c.mkdir(parents=True)
+        (c / "VERSION").write_text(ver + "\n")
+    return d, pkg
+
+class BundleTests(unittest.TestCase):
+    def test_parse(self):
+        version, rows = bd.parse(BUNDLE)
+        self.assertEqual(version, "0.5.0")
+        self.assertEqual(rows, [("dyad-operator", "0.5.0"), ("sysarch", "0.1.1"), ("syseng", "0.1.2")])
+    def test_parse_no_version_line(self):
+        version, rows = bd.parse(BUNDLE.split("\n\n", 1)[1])
+        self.assertEqual(version, "")
+        self.assertEqual(len(rows), 3)
+    def test_check_passes(self):
+        version, rows = bd.parse(BUNDLE)
+        self.assertEqual(bd.check(version, rows, LIVE), [])
+    def test_check_no_version(self):
+        self.assertIn("no `version:` line", bd.check("", [("dyad-operator", "0.5.0")], {"dyad-operator": "0.5.0"}))
+    def test_check_version_mismatch(self):
+        msgs = bd.check("0.5.0", [("sysarch", "0.1.0")], {"sysarch": "0.1.1"})
+        self.assertEqual(len(msgs), 1); self.assertIn("names 0.1.0, the tree has 0.1.1", msgs[0])
+    def test_check_unknown_component(self):
+        msgs = bd.check("0.5.0", [("lan-git", "1.0.0")], {})
+        self.assertIn("'lan-git': not a craft in this tree", msgs)
+    def test_check_missing_row(self):
+        msgs = bd.check("0.5.0", [], {"sysarch": "0.1.1"})
+        self.assertIn("'sysarch' is in the tree but has no bundle row", msgs)
+    def test_check_duplicate(self):
+        msgs = bd.check("0.5.0", [("sysarch", "0.1.1"), ("sysarch", "0.1.1")], {"sysarch": "0.1.1"})
+        self.assertIn("'sysarch': declared twice", msgs)
+    def test_check_malformed_row(self):
+        msgs = bd.check("0.5.0", [("", "0.1.1")], {})
+        self.assertTrue(any("malformed" in m for m in msgs))
+    def test_live_components(self):
+        d, pkg = tree()
+        try:
+            self.assertEqual(bd.live_components(pkg), LIVE)
+        finally:
+            import shutil; shutil.rmtree(d, ignore_errors=True)
+    def test_check_bundle_absent_skips(self):
+        """One absent-store path, three layers (d-work #203 N2: merged test_summary_no_bundle and
+        test_main_no_bundle_is_ok)."""
+        d, pkg = tree()
+        try:
+            with self.subTest("check_bundle"):
+                self.assertEqual(bd.check_bundle(d, pkg), ("", [], []))
+            with self.subTest("summary"):
+                self.assertEqual(bd.summary(d), "no bundle")
+            with self.subTest("main"):
+                # main()'s pkg is bundle.py's own default (dyadlib.PKG); the skip path never reads it,
+                # so an empty root (no BUNDLE.md) is a clean 0 regardless of which tree main() defaults to.
+                self.assertEqual(bd.main([str(d)]), 0)
+        finally:
+            import shutil; shutil.rmtree(d, ignore_errors=True)
+    def test_check_bundle_present_passes(self):
+        d, pkg = tree()
+        try:
+            (d / "BUNDLE.md").write_text(BUNDLE)
+            version, rows, msgs = bd.check_bundle(d, pkg)
+            self.assertEqual(version, "0.5.0"); self.assertEqual(len(rows), 3); self.assertEqual(msgs, [])
+        finally:
+            import shutil; shutil.rmtree(d, ignore_errors=True)
+    def test_check_package_delegates(self):
+        d, pkg = tree()
+        try:
+            (d / "BUNDLE.md").write_text(BUNDLE.replace("0.1.1", "9.9.9"))
+            msgs = bd.check_package(d, pkg)
+            self.assertTrue(any("9.9.9" in m for m in msgs))
+        finally:
+            import shutil; shutil.rmtree(d, ignore_errors=True)
+    def test_describe(self):
+        d, pkg = tree()
+        try:
+            (d / "BUNDLE.md").write_text(BUNDLE)
+            desc = bd.describe(d, pkg)
+            self.assertEqual(desc["store"], "BUNDLE.md"); self.assertEqual(desc["observed"], 3)
+            self.assertEqual([f[0] for f in desc["fields"]], list(bd.FIELDS))
+        finally:
+            import shutil; shutil.rmtree(d, ignore_errors=True)
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+import subprocess
+def git(root, *a):
+    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+
+def repo():
+    """`tree()` as a git repo with one commit and every component tagged at that commit (#91)."""
+    root, pkg = tree()
+    git(root, "init", "-q"); git(root, "add", "-A"); git(root, "commit", "-qm", "seed")
+    for comp, ver in LIVE.items():
+        git(root, "tag", bd.tag_name(comp, ver))
+    return root, pkg
+
+class DriftTests(unittest.TestCase):
+    """#91: a craft's tree at HEAD must equal its own `<name>-v<VERSION>` tag's; absent tag skips."""
+    def test_tag_name_and_invariant(self):
+        self.assertEqual(bd.tag_name("dyad-operator", "0.6.2"), "dyad-operator-v0.6.2")
+        self.assertEqual(bd.tag_name("sysarch", "0.1.5"), "sysarch-v0.1.5")
+        self.assertEqual([n for n, f in bd.INVARIANTS if not f()], []); self.assertEqual(len(bd.INVARIANTS), 5)   # +3 for #504
+    def test_component_roots(self):
+        root, pkg = tree()
+        self.assertEqual({k: v.as_posix() for k, v in bd.component_roots(root, pkg).items()},
+                         {"dyad-operator": "dyad", "sysarch": "crafts/sysarch", "syseng": "crafts/syseng"})
+    def test_unchanged_tree_is_silent(self):
+        root, pkg = repo()
+        self.assertEqual(bd.check_drift(root, pkg), [])
+    def test_changed_file_under_a_tagged_craft_fails(self):
+        root, pkg = repo()
+        (root / "crafts" / "sysarch" / "rules.md").write_text("changed\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "drift")
+        msgs = bd.check_drift(root, pkg)
+        self.assertEqual(len(msgs), 1); self.assertTrue(msgs[0].startswith("'sysarch': crafts/sysarch/ differs from tag sysarch-v0.1.1 (1 file(s)) while VERSION is still 0.1.1"), msgs)
+        self.assertIn(msgs[0], bd.check_package(root, pkg))          # reaches the runner as a FAIL, not a warning
+    def test_core_is_a_component_too(self):
+        root, pkg = repo()
+        (pkg / "rule.md").write_text("changed\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "drift")
+        msgs = bd.check_drift(root, pkg)
+        self.assertEqual(len(msgs), 1); self.assertIn("'dyad-operator': dyad/ differs from tag dyad-operator-v0.5.0", msgs[0])
+    def test_bumped_version_has_no_tag_yet_and_skips(self):
+        root, pkg = repo()
+        (root / "crafts" / "sysarch" / "rules.md").write_text("changed\n")
+        (root / "crafts" / "sysarch" / "VERSION").write_text("0.1.2\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "bump")
+        msgs = bd.check_drift(root, pkg)
+        self.assertEqual(msgs, ["warning: skip 'sysarch': no tag sysarch-v0.1.2 here (not yet released, or tags not fetched)"])
+        self.assertEqual([m for m in bd.check_package(root, pkg) if not m.startswith("warning:")], [])
+    def test_no_tags_at_all_skips_every_component(self):
+        root, pkg = tree()
+        git(root, "init", "-q"); git(root, "add", "-A"); git(root, "commit", "-qm", "seed")
+        msgs = bd.check_drift(root, pkg)
+        self.assertEqual(len(msgs), 3); self.assertTrue(all(m.startswith("warning: skip") for m in msgs))
+    def test_no_commit_skips(self):
+        root, pkg = tree(); git(root, "init", "-q")
+        self.assertEqual(bd.check_drift(root, pkg), ["warning: skip drift: no HEAD commit here"])
+    def test_cli_prints_warn_for_skip_and_exits_zero(self):
+        root, pkg = repo()
+        (root / "crafts" / "syseng" / "VERSION").write_text("0.1.3\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "bump")
+        (root / "BUNDLE.md").write_text(BUNDLE.replace("| syseng | 0.1.2 |", "| syseng | 0.1.3 |"))
+        r = subprocess.run([sys.executable, str(Path(bd.__file__)), str(root)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("warn [bundle] skip 'syseng'", r.stdout); self.assertIn("ok   [bundle] 3 components", r.stdout)
+
+class UnreleasedCraftTests(unittest.TestCase):
+    """#156: a craft with no release tag of its own and no row warns (unreleased, not yet bundled);
+    a released craft with no row, and a row naming a craft not in the tree that was never released, still fail
+    (Rule-11 p7); a row naming a released craft that has left the tree warns (#423)."""
+    ROWS = [("dyad-operator", "0.5.0"), ("sysarch", "0.1.1"), ("syseng", "0.1.2")]
+    def test_unreleased_craft_without_row_warns(self):
+        live = {**LIVE, "newcraft": "0.1.0"}
+        msgs = bd.check("0.5.0", self.ROWS, live, released=set(LIVE))
+        self.assertEqual(msgs, ["warning: 'newcraft' is in the tree but unreleased (no newcraft-v* tag): not yet bundled"])
+    def test_released_craft_without_row_fails(self):
+        live = {**LIVE, "newcraft": "0.1.0"}
+        msgs = bd.check("0.5.0", self.ROWS, live, released=set(live))
+        self.assertEqual(msgs, ["'newcraft' is in the tree but has no bundle row"])
+    def test_row_for_craft_not_in_tree_still_fails(self):
+        msgs = bd.check("0.5.0", self.ROWS + [("ghost", "1.0.0")], LIVE, released=set())
+        self.assertEqual(msgs, ["'ghost': not a craft in this tree"])
+    def test_departed_released_craft_row_warns(self):
+        # #423: a released craft that has left the tree (renamed or retired) keeps its row until the infra-zone PR
+        msgs = bd.check("0.5.0", self.ROWS + [("ghost", "1.0.0")], LIVE, released=set(), departed={"ghost"})
+        self.assertEqual(msgs, ["warning: 'ghost' has left the tree but holds a release tag (ghost-v*): the row is removed by an infra-zone PR (#423)"])
+        self.assertEqual(bd.check("0.5.0", self.ROWS + [("ghost", "1.0.0")], LIVE, released=set(), departed={"other"}),
+                         ["'ghost': not a craft in this tree"])        # a departed set that does not name it: still fails
+    def test_departed_end_to_end_reads_local_tags(self):
+        root, pkg = repo()                                  # every LIVE component tagged
+        try:
+            (root / "BUNDLE.md").write_text(BUNDLE.replace("| syseng | 0.1.2 |", "| syseng | 0.1.2 |\n| ghost | 1.0.0 |"))
+            self.assertEqual(bd.check_bundle(root, pkg)[2], ["'ghost': not a craft in this tree"])     # never released: fails
+            git(root, "tag", "ghost-v1.0.0")
+            self.assertEqual(bd.check_bundle(root, pkg)[2], ["warning: 'ghost' has left the tree but holds a release tag (ghost-v*): the row is removed by an infra-zone PR (#423)"])
+        finally:
+            import shutil; shutil.rmtree(root, ignore_errors=True)
+    def test_released_defaults_to_strict(self):
+        self.assertEqual(bd.check("0.5.0", [], {"sysarch": "0.1.1"}), ["'sysarch' is in the tree but has no bundle row"])
+    def test_released_components_reads_local_tags(self):
+        root, pkg = tree()
+        try:
+            git(root, "init", "-q"); git(root, "add", "-A"); git(root, "commit", "-qm", "seed")
+            git(root, "tag", "sysarch-v0.0.9")            # any release of its own counts, not only the live VERSION's
+            git(root, "tag", "v0.5.0")                     # the bundle's own unprefixed tag names no craft
+            self.assertEqual(bd.released_components(root, LIVE), {"sysarch"})
+        finally:
+            import shutil; shutil.rmtree(root, ignore_errors=True)
+    def test_check_bundle_end_to_end(self):
+        root, pkg = repo()                                  # every LIVE component tagged
+        try:
+            c = root / "crafts" / "newcraft"; c.mkdir(); (c / "VERSION").write_text("0.1.0\n")
+            git(root, "add", "-A"); git(root, "commit", "-qm", "new craft")
+            (root / "BUNDLE.md").write_text(BUNDLE)
+            self.assertEqual(bd.check_bundle(root, pkg)[2], ["warning: 'newcraft' is in the tree but unreleased (no newcraft-v* tag): not yet bundled"])
+            r = subprocess.run([sys.executable, str(Path(bd.__file__)), str(root)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("warn [bundle] 'newcraft' is in the tree but unreleased", r.stdout)
+            git(root, "tag", "newcraft-v0.1.0")
+            self.assertEqual(bd.check_bundle(root, pkg)[2], ["'newcraft' is in the tree but has no bundle row"])
+        finally:
+            import shutil; shutil.rmtree(root, ignore_errors=True)
+
+
+class ReleasedCraftChangedTests(unittest.TestCase):
+    """#170, the released half of #156: a craft-zone PR bumps `VERSION` and Rule-1 forbids that PR from carrying
+    the infra-zone row, so a row behind an unreleased live version that names a released one warns; every
+    other mismatch still fails."""
+    ROWS = [("dyad-operator", "0.5.0"), ("sysarch", "0.1.1"), ("syseng", "0.1.2")]
+    TAGGED = {("dyad-operator", "0.5.0"), ("sysarch", "0.1.1"), ("syseng", "0.1.2")}
+    def live(self, **over):
+        return {**LIVE, **over}
+    def test_row_behind_an_unreleased_bump_warns(self):
+        msgs = bd.check("0.5.0", self.ROWS, self.live(sysarch="0.1.2"), tagged=self.TAGGED)
+        self.assertEqual(len(msgs), 1); self.assertTrue(msgs[0].startswith("warning: 'sysarch': bundle names 0.1.1, the tree has 0.1.2"), msgs)
+        self.assertIn("infra-zone PR (#170)", msgs[0])
+    def test_row_ahead_of_the_tree_fails(self):
+        rows = [("dyad-operator", "0.5.0"), ("sysarch", "0.1.3"), ("syseng", "0.1.2")]
+        tagged = self.TAGGED | {("sysarch", "0.1.3")}          # even a tagged row cannot run ahead of the tree
+        self.assertEqual(bd.check("0.5.0", rows, self.live(sysarch="0.1.2"), tagged=tagged), ["'sysarch': bundle names 0.1.3, the tree has 0.1.2"])
+    def test_row_naming_an_untagged_version_behind_an_untagged_bump_warns(self):
+        """#481 (#522's 0.12.3): the row was moved to a number no release cut, and the live bump is not tagged either."""
+        tagged = self.TAGGED - {("sysarch", "0.1.1")}
+        msgs = bd.check("0.5.0", self.ROWS, self.live(sysarch="0.1.2"), tagged=tagged)
+        self.assertEqual(len(msgs), 1, msgs)
+        self.assertTrue(msgs[0].startswith("warning: 'sysarch': bundle names 0.1.1, which was never released (no sysarch-v0.1.1 tag), "
+                                           "and the tree has 0.1.2, also unreleased"), msgs)
+        self.assertIn("(#481)", msgs[0])
+    def test_an_untagged_row_still_fails_ahead_of_the_tree_or_for_an_unreleased_craft(self):
+        tagged = self.TAGGED - {("sysarch", "0.1.1")}
+        rows = [("dyad-operator", "0.5.0"), ("sysarch", "0.1.3"), ("syseng", "0.1.2")]
+        self.assertEqual(bd.check("0.5.0", rows, self.live(sysarch="0.1.2"), tagged=tagged), ["'sysarch': bundle names 0.1.3, the tree has 0.1.2"])
+        released = set(LIVE) - {"sysarch"}                     # a craft with no release tag at all keeps the strict form
+        self.assertEqual(bd.check("0.5.0", self.ROWS, self.live(sysarch="0.1.2"), released=released, tagged=tagged),
+                         ["'sysarch': bundle names 0.1.1, the tree has 0.1.2"])
+    def test_row_left_behind_once_the_live_version_is_tagged_fails(self):
+        tagged = self.TAGGED | {("sysarch", "0.1.2")}           # the release was cut against a stale row
+        self.assertEqual(bd.check("0.5.0", self.ROWS, self.live(sysarch="0.1.2"), tagged=tagged), ["'sysarch': bundle names 0.1.1, the tree has 0.1.2"])
+    def test_strict_form_unchanged_without_tags(self):
+        self.assertEqual(bd.check("0.5.0", self.ROWS, self.live(sysarch="0.1.2")), ["'sysarch': bundle names 0.1.1, the tree has 0.1.2"])
+    def test_unparseable_versions_fail(self):
+        rows = [("dyad-operator", "0.5.0"), ("sysarch", "0.1.1-rc"), ("syseng", "0.1.2")]
+        tagged = self.TAGGED | {("sysarch", "0.1.1-rc")}
+        self.assertEqual(len(bd.check("0.5.0", rows, self.live(sysarch="0.1.2"), tagged=tagged)), 1)
+        self.assertFalse(bd.check("0.5.0", rows, self.live(sysarch="0.1.2"), tagged=tagged)[0].startswith("warning:"))
+    def test_tagged_versions_reads_local_tags(self):
+        root, pkg = repo()
+        try:
+            git(root, "tag", "sysarch-v0.1.0"); git(root, "tag", "v0.5.0")           # the bundle's own tag names no craft
+            self.assertEqual(bd.tagged_versions(root, LIVE),
+                             {("dyad-operator", "0.5.0"), ("sysarch", "0.1.1"), ("sysarch", "0.1.0"), ("syseng", "0.1.2")})
+        finally:
+            import shutil; shutil.rmtree(root, ignore_errors=True)
+    def test_landing_order_end_to_end(self):
+        """Craft-zone bump (warns) → infra-zone row (passes) → release tag; a tag cut against the stale row fails."""
+        root, pkg = repo()
+        try:
+            (root / "BUNDLE.md").write_text(BUNDLE)
+            self.assertEqual(bd.check_bundle(root, pkg)[2], [])
+            (root / "crafts" / "sysarch" / "VERSION").write_text("0.1.2\n")                        # PR 1: the craft-zone bump
+            git(root, "add", "-A"); git(root, "commit", "-qm", "sysarch 0.1.2")
+            msgs = bd.check_bundle(root, pkg)[2]
+            self.assertEqual(len(msgs), 1); self.assertTrue(msgs[0].startswith("warning: 'sysarch'"), msgs)
+            r = subprocess.run([sys.executable, str(Path(bd.__file__)), str(root)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("warn [bundle] 'sysarch': bundle names 0.1.1", r.stdout)
+            git(root, "tag", "sysarch-v0.1.2")                                                       # a release cut against the stale row
+            self.assertEqual(bd.check_bundle(root, pkg)[2], ["'sysarch': bundle names 0.1.1, the tree has 0.1.2"])
+            git(root, "tag", "-d", "sysarch-v0.1.2")
+            (root / "BUNDLE.md").write_text(BUNDLE.replace("sysarch | 0.1.1", "sysarch | 0.1.2"))  # PR 2: the infra-zone row
+            self.assertEqual(bd.check_bundle(root, pkg)[2], [])
+        finally:
+            import shutil; shutil.rmtree(root, ignore_errors=True)
+
+
+class CitationTests(unittest.TestCase):
+    """d-work #504, Rule-11 property 2: a craft a core Rule cites by path is bundled; one no Rule
+    cites is bundled only with a `PURPOSE` line beside its declaration."""
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp()); self.pkg = self.d / "dyad"
+        (self.pkg / "rules").mkdir(parents=True)
+    def tearDown(self):
+        import shutil; shutil.rmtree(self.d, ignore_errors=True)
+    def rule(self, name, text):
+        (self.pkg / "rules" / name).write_text(text)
+    def craft(self, name, guard=None):
+        c = self.d / "crafts" / name; c.mkdir(parents=True)
+        (c / "VERSION").write_text("0.1.0\n")
+        if guard is not None:
+            (c / "guards").mkdir(); (c / "guards" / "x.py").write_text(guard)
+    def fails(self):
+        return [m for m in bd.check_citations(self.pkg) if not m.startswith("warning:")]
+    def warns(self):
+        return [m for m in bd.check_citations(self.pkg) if m.startswith("warning:")]
+
+    def test_cited_and_declared_passes(self):
+        self.rule("RULE-8-x.md", "reads `crafts/foo/rules/a.md`\n")
+        self.craft("foo", "BUNDLED_WITH_CORE = True\n")
+        self.assertEqual(bd.check_citations(self.pkg), [])
+    def test_cited_and_undeclared_fails_naming_the_rules(self):
+        self.rule("RULE-8-x.md", "reads `crafts/foo/rules/a.md`\n")
+        self.rule("RULE-12-y.md", "and `crafts/foo/guards/b.py`\n")
+        self.craft("foo", "NAME = 'x'\n")
+        f = self.fails()
+        self.assertEqual(len(f), 1, f)
+        self.assertIn("'foo': cited by path in RULE-8-x.md, RULE-12-y.md but not bundled", f[0])
+    def test_cited_undeclared_without_guards_dir_fails(self):
+        self.rule("RULE-8-x.md", "`crafts/foo/`\n")
+        self.craft("foo")
+        self.assertEqual(len(self.fails()), 1)
+    def test_commented_or_false_declaration_is_undeclared(self):
+        self.rule("RULE-8-x.md", "`crafts/foo/`\n")
+        self.craft("foo", "# BUNDLED_WITH_CORE = True\nBUNDLED_WITH_CORE = False\n")
+        self.assertEqual(len(self.fails()), 1)
+    def test_declaration_in_private_module_does_not_count(self):
+        self.rule("RULE-8-x.md", "`crafts/foo/`\n")
+        self.craft("foo", "NAME = 'x'\n")
+        (self.d / "crafts" / "foo" / "guards" / "_helper.py").write_text("BUNDLED_WITH_CORE = True\n")
+        self.assertEqual(len(self.fails()), 1)
+    def test_cited_and_absent_warns_never_fails(self):
+        self.rule("RULE-8-x.md", "`crafts/foo/`\n")
+        self.assertEqual(self.fails(), [])
+        w = self.warns(); self.assertEqual(len(w), 1); self.assertIn("'foo'", w[0]); self.assertIn("not in this tree", w[0])
+    def test_declared_uncited_with_purpose_passes(self):
+        self.craft("bar", "BUNDLED_WITH_CORE = True\nPURPOSE = \"spends the Operator's attention only on decisions\"\n")
+        self.assertEqual(bd.check_citations(self.pkg), [])
+    def test_declared_uncited_without_purpose_fails(self):
+        self.craft("bar", "BUNDLED_WITH_CORE = True\n")
+        f = self.fails(); self.assertEqual(len(f), 1); self.assertIn("'bar'", f[0]); self.assertIn("PURPOSE", f[0])
+    def test_declared_uncited_with_empty_purpose_fails(self):
+        self.craft("bar", "BUNDLED_WITH_CORE = True\nPURPOSE = \"\"\n")
+        self.assertEqual(len(self.fails()), 1)
+    def test_purpose_in_another_module_does_not_count(self):
+        self.craft("bar", "BUNDLED_WITH_CORE = True\n")
+        (self.d / "crafts" / "bar" / "guards" / "y.py").write_text("PURPOSE = \"elsewhere\"\n")
+        self.assertEqual(len(self.fails()), 1)
+    def test_undeclared_uncited_craft_is_silent(self):
+        self.craft("bar", "NAME = 'x'\n")
+        self.assertEqual(bd.check_citations(self.pkg), [])
+    def test_citation_outside_a_rule_does_not_count(self):
+        (self.pkg / "playbooks").mkdir(); (self.pkg / "playbooks" / "p.md").write_text("`crafts/foo/`\n")
+        (self.pkg / "rules" / "README.md").write_text("`crafts/foo/`\n")
+        self.craft("foo", "NAME = 'x'\n")
+        self.assertEqual(bd.check_citations(self.pkg), [])
+    def test_placeholder_is_not_a_citation(self):
+        self.rule("RULE-6-x.md", "`crafts/<craft>/vocabulary/CRAFT.md`\n")
+        self.assertEqual(bd.cited_crafts(self.pkg), {})
+    def test_runs_without_bundle_md_in_check_package_and_main(self):
+        """The criterion judges the core's release (property 2), not BUNDLE.md (property 7)."""
+        (self.pkg / "VERSION").write_text("0.5.0\n")
+        self.rule("RULE-8-x.md", "`crafts/foo/`\n")
+        self.craft("foo", "NAME = 'x'\n")
+        self.assertTrue(any("'foo': cited by path" in m for m in bd.check_package(self.d, self.pkg)))
+        r = subprocess.run([sys.executable, str(Path(bd.__file__)), str(self.d)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stdout); self.assertIn("skip [bundle] no BUNDLE.md", r.stdout)
+        self.assertIn("FAIL [bundle] 'foo': cited by path", r.stderr)
