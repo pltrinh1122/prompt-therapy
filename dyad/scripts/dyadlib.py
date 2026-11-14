@@ -990,7 +990,11 @@ def read_rows(root: Path | None = None, at: str | None = None) -> list[Row]:
         except subprocess.CalledProcessError:
             # transition / legacy: a commit before Rule-16 has only the table
             table_rel = ledger_path(root).relative_to(root)
-            return ledger_rows(subprocess.check_output(["git", "show", f"{at}:{table_rel}"], cwd=root, text=True))
+            try:
+                table = subprocess.check_output(["git", "show", f"{at}:{table_rel}"], cwd=root, text=True, stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:
+                return []   # a base with no d-work store at all (a fresh system's first push): no rows, not a crash
+            return ledger_rows(table)
         want = [f"{rel.as_posix()}/{n}" for n in sorted(names, key=lambda n: int(n[:-3]) if n[:-3].isdigit() else -1)
                 if n.endswith(".md") and n[:-3].isdigit()]
         got = show_many(root, at, want)                 # one process for every row file (#617)
