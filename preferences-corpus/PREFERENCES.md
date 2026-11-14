@@ -15,7 +15,7 @@ defines what each value means.
 | delegation-posture-unattended | efficient | `responsive` \| `balanced` \| `efficient` | the cabinet Operating Guide (Posture), Rule-3 (subagent clause, under `delegation: plan-and-execute`) |
 | cli-pattern | industry-standard | `industry-standard` \| `explicit-python` | Rule-19 (run-book commands), Rule-11 (entrypoint) |
 | batch-disposition-mode | off | `off` \| `on-ignore` \| `always` | Rule-2 (binding), Rule-3 (counter-prompt form) |
-| ledger-pr-merge | ask | `ask` \| `agent` | Rule-2 (not-ratification list), Rule-1 (branch-fence case) |
+| ledger-pr-merge | agent | `ask` \| `agent` | Rule-2 (not-ratification list), Rule-1 (branch-fence case) |
 | concise-mode | off | `off` \| `on` | Rule-10 (reply form), Rule-3 (what the reply carries) |
 | accretion | explicit | `explicit` \| `implicit` | Rule-3 (scope, plan, ledger, completion), Rule-2 (binding) |
 | host-path | workstation-corpus | a repo-relative directory | Rule-1 (host row of the zone table), Rule-14 (instance contribution) |
@@ -109,6 +109,7 @@ defines what each value means.
   preference and the file list, so `git log` alone shows why no counter-prompt preceded it.
   Seeded `ask`: it is an authority preference (a standing mandate), and an install never ships
   an authorization its own Operator has not disposed.
+  granted: d-work #6 entry 1 (this system's operator set `agent`, 2026-11-14).
 - `concise-mode` — `off`: the Agent may speak before and between its actions. `on`: exactly one
   reply per Operator prompt, the synthesis, emitted when the turn ends (done, or stopped at a
   blocking question); every finding, incident, evidence block and queue count a Rule requires is
