@@ -1,0 +1,575 @@
+import os, shutil, sys, tempfile, unittest, unittest.mock
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+import dyadlib, livetest
+
+LEDGER = """# d-work ledger
+
+| id | title | opened | state | disposed | refs |
+|----|-------|--------|-------|----------|------|
+| 1 | first | 2026-09-12 | done | 2026-09-12 Y done | PR #2 |
+| 12 | twelve | 2026-09-12 | open | 2026-09-12 Y plan |  |
+| 13 | blocked one | 2026-09-12 | blocked | 2026-09-12 N | blocked by #24 |
+"""
+
+class LedgerTests(unittest.TestCase):
+    def test_rows_parse_and_skip_header(self):
+        rows = dyadlib.ledger_rows(LEDGER)
+        self.assertEqual([r.id for r in rows], [1, 12, 13])
+        self.assertEqual(rows[1].state, "open")
+        self.assertEqual(rows[1].disposed, "2026-09-12 Y plan")
+        self.assertEqual(rows[1].refs, "")
+
+    def test_row_lookup_and_missing(self):
+        self.assertEqual(dyadlib.ledger_row(LEDGER, 13).state, "blocked")
+        self.assertIsNone(dyadlib.ledger_row(LEDGER, 99))
+
+    def test_duplicate_id_rejected(self):
+        with self.assertRaises(ValueError):
+            dyadlib.ledger_rows(LEDGER + "| 12 | again | 2026-09-13 | open | | |\n")
+
+    def test_short_row_rejected(self):
+        with self.assertRaises(ValueError):
+            dyadlib.ledger_rows("| 5 | too | short |\n")
+
+class OrchestrationMachineTests(unittest.TestCase):
+    """d-work #587: the board entry's machine (`ORCH_EVENTS`) holds its invariants, and each one flips on a patched
+    copy of the table that breaks exactly what it names."""
+    def test_the_table_holds(self):
+        names = [n for n, _ in dyadlib.orch_invariants(dyadlib.ORCH_EVENTS)]
+        self.assertEqual(dyadlib.false_invariants(dyadlib.orch_invariants(dyadlib.ORCH_EVENTS)), [])
+        self.assertTrue(set(names) <= {n for n, _ in dyadlib.INVARIANTS})       # enforced at import
+        self.assertEqual(dyadlib.ORCH_CLI_EVENTS, dyadlib.ORCH_EVENT_NAMES - {"closed", "head-moved", "withdrawn"}   # the automaton's own
+                         - {"read"})                                                 # S10: inbox read's, never board advance's
+        self.assertEqual(dyadlib.ORCH_NO_EFFECT, {"read"})
+        self.assertEqual({k: v for k, v in dyadlib.ORCH_EVENTS.items() if k[1] == "read"},          # S10: a self-loop everywhere
+                         {(p, "read"): ((p,), "home or unit", ()) for p in dyadlib.ORCH_PHASES})
+        self.assertEqual(dyadlib.orch_actors("home or automaton"), {"home", "automaton"})
+        for e in ("evidence-verified", "evidence-failed"):                                   # #587 X5: either may fire it
+            self.assertEqual(dyadlib.orch_actors(dyadlib.ORCH_EVENTS[("verifying", e)][1]), {"home", "automaton"})
+        self.assertEqual({f for f, e in dyadlib.ORCH_EVENTS if e == "head-moved"}, set(dyadlib.ORCH_WATCHED))   # X6
+        self.assertEqual({k: v for k, v in dyadlib.ORCH_EVENTS.items() if k[1] == "withdrawn"},          # X6, a batch
+                         {("done-asked", "withdrawn"): (("done-ready",), "automaton", ("note",))})
+        self.assertEqual((dyadlib.orch_release_to("plan-asked"), dyadlib.orch_release_to("done-asked"),
+                          dyadlib.orch_release_to("building")), ("plan-ready", "done-ready", "building"))
+
+    def test_each_invariant_flips_on_a_patched_copy(self):
+        E = dyadlib.ORCH_EVENTS
+        def without(*keys):
+            return {k: v for k, v in E.items() if k not in keys}
+        cases = {
+            "orch-every-phase-reachable": without(("plan-ready", "asked")),                       # plan-asked unreachable
+            "orch-every-phase-exits": without(("building", "pr-up"), ("building", "evidence-verified"), ("building", "hold")),
+            "orch-answers-from-asked-by-home": {**E, ("building", "answered-Y"): (("done-ready",), "home", ("said-file",))},
+            "orch-automaton-takes-no-words": {**E, ("landing", "closed"): ((dyadlib.ORCH_DROP,), "automaton", ("said-file",))},
+            "orch-hold-closure": without(("verifying", "hold")),
+            "orch-drop-reachable": {**E, ("landing", "closed"): (("landing",), "automaton", ())},   # a trap phase
+            "orch-keys-known": {**E, ("planning", "release"): ((dyadlib.ORCH_FROM,), "home", ())},
+            "orch-keys-known ": {**E, ("verifying", "evidence-failed"): (("building",), "home or robot", ("note",))},
+            "orch-asked-exits-on-answer": {**E, ("plan-asked", "pr-up"): (("verifying",), "unit", ("pr", "head"))},
+            "orch-head-moved-returns-to-verifying": {**E, ("done-asked", "head-moved"): (("done-ready",), "automaton", ("pr", "head"))},
+            "orch-automaton-evidence-from-verifying-only": {**E, ("building", "evidence-verified"): (("done-ready",), "home or automaton", ("evidence",))},
+            "orch-withdrawn-is-the-automatons-from-done-asked": {**E, ("done-asked", "withdrawn"): (("done-ready",), "home", ("note",))},
+            "orch-withdrawn-is-the-automatons-from-done-asked ": {**E, ("plan-asked", "withdrawn"): (("plan-ready",), "automaton", ("note",))},
+            "orch-no-effect-is-a-self-loop-everywhere": without(("held", "read")),
+            "orch-no-effect-is-a-self-loop-everywhere ": {**E, ("building", "read"): (("verifying",), "home or unit", ())},
+            "orch-no-effect-is-a-self-loop-everywhere  ": {**E, ("building", "read"): (("building",), "automaton", ())},
+            "orch-no-effect-is-a-self-loop-everywhere   ": {**E, (None, "read"): (("planning",), "unit", ())},
+        }
+        for name, table in cases.items():
+            self.assertIn(name.strip(), dyadlib.false_invariants(dyadlib.orch_invariants(table)), name)
+        # an asked phase may exit by head-moved or withdrawn (Rule-2 voids a Y on a moved head, and a batch Y when any
+        # head it names moves), and by nothing else unanswered
+        self.assertNotIn("orch-asked-exits-on-answer", dyadlib.false_invariants(dyadlib.orch_invariants(E)))
+
+
+class SemverTests(unittest.TestCase):
+    """D2 (#100): one grammar, shared by the core and every Tended craft's VERSION check — strict
+    MAJOR.MINOR.PATCH, with an optional `+build` suffix a diverged, unreleased tree may carry."""
+    def test_plain_semver_matches(self):
+        self.assertTrue(dyadlib.SEMVER.fullmatch("1.2.3"))
+        self.assertTrue(dyadlib.SEMVER.fullmatch("0.0.1"))
+    def test_build_metadata_matches(self):
+        self.assertTrue(dyadlib.SEMVER.fullmatch("1.2.3+local.1"))
+        self.assertTrue(dyadlib.SEMVER.fullmatch("1.2.3+asg-1"))
+    def test_malformed_does_not_match(self):
+        for bad in ("1.2", "1.2.3.4", "v1.2.3", "1.2.3-rc1", ""):
+            self.assertFalse(dyadlib.SEMVER.fullmatch(bad), bad)
+    def test_semver_tuple_strips_build_suffix(self):
+        self.assertEqual(dyadlib.semver_tuple("1.2.3"), (1, 2, 3))
+        self.assertEqual(dyadlib.semver_tuple("1.2.3+local.1"), (1, 2, 3))
+        self.assertTrue(dyadlib.semver_tuple("1.2.3+z") == dyadlib.semver_tuple("1.2.3") < dyadlib.semver_tuple("1.3.0"))
+
+class PathTests(unittest.TestCase):
+    def test_instance_default_and_override(self):
+        root = Path("/r")
+        os.environ.pop("DYAD_INSTANCE", None)
+        self.assertEqual(dyadlib.instance(root), root / "agent-corpus")
+        os.environ["DYAD_INSTANCE"] = "inst"
+        self.assertEqual(dyadlib.ledger_path(root), root / "inst" / "d-work" / "LEDGER.md")
+        os.environ.pop("DYAD_INSTANCE", None)
+
+    def test_rule_files_numbered(self):
+        files = dyadlib.rule_files()
+        self.assertIn(1, files); self.assertIn(7, files); self.assertIn(11, files)
+        self.assertTrue(all(isinstance(n, int) and p.name.startswith(f"RULE-{n}-") for n, p in files.items()))
+
+    def test_plain_strips_emphasis(self):
+        self.assertEqual(dyadlib.plain("plan-`Y` *coherent*"), "plan-Y coherent")
+
+class HostPathTests(unittest.TestCase):
+    """#175: host_path / host_zone — env override, else the preference rows, else the defaults."""
+    PREFS = ("| key | value | allowed | read by |\n|-----|-------|---------|---------|\n"
+             "| host-path | `infrastructure/` | a repo-relative directory | Rule-1 |\n"
+             "| host-zone | infra | `workstation` \\| `infra` | Rule-1 |\n")
+    def setUp(self):
+        import tempfile
+        self.prev = {k: os.environ.pop(k, None) for k in ("DYAD_HOST", "DYAD_HOST_ZONE")}
+        self.root = Path(tempfile.mkdtemp())
+    def tearDown(self):
+        for k, v in self.prev.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+    def write(self, text):
+        (self.root / "preferences-corpus").mkdir(exist_ok=True)
+        (self.root / dyadlib.PREFERENCES_REL).write_text(text)
+    def test_defaults_without_preferences(self):
+        self.assertEqual((dyadlib.host_path(self.root), dyadlib.host_zone(self.root)), ("workstation-corpus", "workstation"))
+        self.assertIsNone(dyadlib.preference("host-path", self.root))
+    def test_preference_rows(self):
+        self.write(self.PREFS)
+        self.assertEqual((dyadlib.host_path(self.root), dyadlib.host_zone(self.root)), ("infrastructure", "infra"))
+    def test_env_overrides_preference(self):
+        self.write(self.PREFS)
+        os.environ["DYAD_HOST"], os.environ["DYAD_HOST_ZONE"] = "elsewhere", "workstation"
+        self.assertEqual((dyadlib.host_path(self.root), dyadlib.host_zone(self.root)), ("elsewhere", "workstation"))
+    def test_invalid_values_raise(self):
+        for var, val, fn in (("DYAD_HOST_ZONE", "host", dyadlib.host_zone), ("DYAD_HOST", "/abs", dyadlib.host_path), ("DYAD_HOST", "a/../b", dyadlib.host_path)):
+            os.environ[var] = val
+            with self.assertRaises(ValueError):
+                fn(self.root)
+            os.environ.pop(var)
+    def test_live_repo_keeps_the_default(self):
+        """No root: the live repo's own preference row, else the default — whatever this instance set
+        (#179: dyad-system's `workstation` is its value, not every system's)."""
+        live = dyadlib.repo_root()
+        self.assertEqual(dyadlib.host_zone(), dyadlib.preference("host-zone", live) or dyadlib.DEFAULT_HOST_ZONE)
+        self.assertEqual(dyadlib.host_path(), (dyadlib.preference("host-path", live) or dyadlib.DEFAULT_HOST).strip().rstrip("/"))
+        self.assertIn(dyadlib.host_zone(), dyadlib.HOST_ZONES)
+
+class EventsOnlyTests(unittest.TestCase):
+    """#438: `events_only` — a range whose own commits touch only `<host>/runbooks/events/` is clerical, read as
+    `ledger_only` is: commit by commit (three-dot) for the gates, the two-dot tree for the suite skip; a range
+    mixing ledger and events commits, or a commit touching both, is neither."""
+    EV = "workstation-corpus/runbooks/events/sessions.jsonl"
+    def setUp(self):
+        import subprocess, tempfile
+        self.prev = {k: os.environ.pop(k, None) for k in ("DYAD_HOST", "DYAD_HOST_ZONE", "DYAD_RUNBOOKS", "DYAD_INSTANCE")}
+        self.root = Path(tempfile.mkdtemp())
+        self.sh = lambda *a: subprocess.run(a, cwd=self.root, check=True, capture_output=True, text=True).stdout.strip()
+        self.sh("git", "init", "-q", "-b", "main"); self.sh("git", "config", "user.email", "t@t"); self.sh("git", "config", "user.name", "t")
+        self.write("dyad/x.py", "x = 1\n"); self.base = self.commit("root")
+    def tearDown(self):
+        for k, v in self.prev.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+        shutil.rmtree(self.root, ignore_errors=True)
+    def write(self, rel, text):
+        p = self.root / rel; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(text)
+    def commit(self, msg="c"):
+        self.sh("git", "add", "-A"); self.sh("git", "commit", "-qm", msg); return self.sh("git", "rev-parse", "HEAD")
+    def test_events_only_range(self):
+        self.write(self.EV, '{"a": 1}\n'); h1 = self.commit("event")
+        self.write(self.EV, '{"a": 1}\n{"a": 2}\n'); h2 = self.commit("event 2")
+        self.assertEqual(dyadlib.events_rel(self.root), "workstation-corpus/runbooks/events")
+        self.assertTrue(dyadlib.events_only(self.root, self.base, h2))
+        self.assertTrue(dyadlib.events_only(self.root, self.base, h2, merge_base=False))
+        self.assertFalse(dyadlib.ledger_only(self.root, self.base, h1))        # the two classes are distinct
+        self.assertFalse(dyadlib.events_only(self.root, h2, h2))               # an empty range is never events-only
+        self.assertFalse(dyadlib.events_only(self.root, self.base, "no-such-ref"))   # nor an unreadable one
+    def test_mixed_ranges_and_commits_are_neither(self):
+        self.write(self.EV, '{"a": 1}\n'); self.commit("event")
+        self.write("agent-corpus/d-work/rows/1.md", "id: 1\n"); h = self.commit("ledger")
+        self.assertFalse(dyadlib.events_only(self.root, self.base, h))         # an events commit then a ledger commit
+        self.assertFalse(dyadlib.ledger_only(self.root, self.base, h))
+        self.sh("git", "checkout", "-q", "-B", "both", self.base)
+        self.write(self.EV, '{"a": 1}\n'); self.write("agent-corpus/d-work/rows/1.md", "id: 1\n"); h = self.commit("one commit, two stores")
+        self.assertFalse(dyadlib.events_only(self.root, self.base, h)); self.assertFalse(dyadlib.ledger_only(self.root, self.base, h))
+        self.sh("git", "checkout", "-q", "-B", "runbook", self.base)
+        self.write("workstation-corpus/runbooks/sessions.md", "x"); h = self.commit("a run-book is not an event")
+        self.assertFalse(dyadlib.events_only(self.root, self.base, h))
+    def test_a_branch_that_ever_touched_code_is_not_events_only(self):
+        self.write("dyad/y.py", "y"); self.commit("code"); (self.root / "dyad" / "y.py").unlink(); self.commit("revert")
+        self.write(self.EV, '{"a": 1}\n'); h = self.commit("event")
+        self.assertFalse(dyadlib.events_only(self.root, self.base, h))         # commit by commit
+        self.assertTrue(dyadlib.events_only(self.root, self.base, h, merge_base=False))   # the tree: net events only
+    def test_a_move_into_the_store_is_not_events_only(self):
+        (self.root / "workstation-corpus" / "runbooks" / "events").mkdir(parents=True)
+        self.sh("git", "mv", "dyad/x.py", "workstation-corpus/runbooks/events/x.jsonl"); h = self.commit("move")
+        self.assertFalse(dyadlib.events_only(self.root, self.base, h))         # rename detection off: the source counts
+    def test_the_store_follows_the_host_path_and_the_runbooks_override(self):
+        os.environ["DYAD_HOST"] = "infrastructure"
+        self.assertEqual(dyadlib.events_rel(self.root), "infrastructure/runbooks/events")
+        self.write(self.EV, '{"a": 1}\n'); h = self.commit("event under the default host")
+        self.assertFalse(dyadlib.events_only(self.root, self.base, h))         # not this system's store
+        os.environ["DYAD_RUNBOOKS"] = "elsewhere/"
+        self.assertEqual(dyadlib.events_rel(self.root), "elsewhere/events")
+        os.environ["DYAD_RUNBOOKS"] = str(self.root / "workstation-corpus" / "runbooks")   # absolute, inside the tree
+        self.assertEqual(dyadlib.events_rel(self.root), "workstation-corpus/runbooks/events")
+        self.assertTrue(dyadlib.events_only(self.root, self.base, h))
+        os.environ["DYAD_RUNBOOKS"] = "/outside"
+        self.assertIsNone(dyadlib.events_rel(self.root)); self.assertFalse(dyadlib.events_only(self.root, self.base, h))
+        os.environ.pop("DYAD_RUNBOOKS"); os.environ["DYAD_HOST"] = "/abs"
+        self.assertIsNone(dyadlib.events_rel(self.root))                       # an unusable host path: never events-only
+
+class TableHeaderTests(unittest.TestCase):
+    def test_header_is_the_line_before_the_separator(self):
+        self.assertEqual(dyadlib.table_header(LEDGER), ["id", "title", "opened", "state", "disposed", "refs"])
+        self.assertEqual(dyadlib.table_header("prose\n| a | b |\nno separator\n"), [])
+        self.assertEqual(dyadlib.table_header(""), [])
+
+class EscapedPipeTests(unittest.TestCase):
+    """#171: a cell splits on an unescaped `|` only; an escaped `\\|` stays in its cell and is returned as `|`."""
+    TEXT = "| key | allowed |\n|-----|---------|\n| m | `a` \\| `b` |\n| n | plain |\n"
+    def test_split_cells(self):
+        self.assertEqual(dyadlib.split_cells("| a \\| b | c |"), ["a | b", "c"])
+        self.assertEqual(dyadlib.split_cells("| a | b |"), ["a", "b"])
+        self.assertEqual(dyadlib.split_cells("| a | b \\|"), ["a", "b |"])          # an escaped last pipe is content
+        self.assertEqual(dyadlib.split_cells(f"| {dyadlib.escape_cell('x|y')} |"), ["x|y"])
+    def test_table_rows_and_tables_keep_the_cell(self):
+        self.assertEqual(dyadlib.table_rows(self.TEXT), [["m", "`a` | `b`"], ["n", "plain"]])
+        self.assertEqual(dyadlib.tables(self.TEXT), [(["key", "allowed"], [["m", "`a` | `b`"], ["n", "plain"]])])
+        self.assertEqual(dyadlib.table_header("| a \\| b | c |\n|---|---|\n"), ["a | b", "c"])
+    def test_a_caller_that_pre_replaces_still_reads_the_same_cells(self):
+        pre = dyadlib.table_rows(self.TEXT.replace("\\|", "\x00"))
+        self.assertEqual([[c.replace("\x00", "|") for c in r] for r in pre], dyadlib.table_rows(self.TEXT))
+
+class UtcDateTests(unittest.TestCase):
+    """#592 R-b: `utc_date` is UTC's day, never the host's: with the local zone 14 h ahead (or 12 h behind) of UTC,
+    the two differ and `utc_date` gives UTC's."""
+    def test_utc_date_ignores_the_local_zone(self):
+        with livetest.off_utc() as (utc, local):
+            self.assertNotEqual(local, utc)
+            self.assertEqual(dyadlib.utc_date(), utc)
+
+
+class IntentMachineTests(unittest.TestCase):
+    """#615: the row machine gains `open → archived` on the bare intent-N, a disposition, so only the operator closes;
+    the board's machine gains the `intent-asked` phase, asked from planning and answered back to it or dropped."""
+    def test_the_edge_and_its_input(self):
+        self.assertIn("archived", dyadlib.TRANSITIONS["open"])
+        self.assertEqual(dyadlib.INPUTS[("open", "archived")][1], {"disposition"})
+        self.assertIn("N intent", dyadlib.INPUTS[("open", "archived")][0])
+        self.assertEqual(dyadlib.false_invariants(dyadlib.INVARIANTS), [])
+    def test_a_clerical_close_would_break_only_the_operator_closes(self):
+        inv = dict(dyadlib.INVARIANTS)["only-the-operator-closes"]
+        with unittest.mock.patch.dict(dyadlib.INPUTS, {("open", "archived"): ("x", frozenset({"clerical"}))}):
+            self.assertFalse(inv())
+        self.assertTrue(inv())
+    def test_the_intent_phase(self):
+        E = dyadlib.ORCH_EVENTS
+        self.assertIn("intent-asked", dyadlib.ORCH_ASKED)
+        self.assertEqual(E[("planning", "asked")], (("intent-asked",), "home", ()))
+        self.assertEqual(E[("intent-asked", "answered-Y")], (("planning",), "home", ("said-file",)))
+        self.assertEqual(E[("intent-asked", "answered-N")], (("planning", dyadlib.ORCH_DROP), "home", ("said-file",)))
+        self.assertIn(("intent-asked", "hold"), E)
+        self.assertEqual(dyadlib.orch_release_to("intent-asked"), "planning")
+        self.assertEqual(dyadlib.CLI[("dwork", "intent")].pos, "<id>")
+        self.assertEqual(dyadlib.CLI[("playbook", "profile")].pos, "<name>")   # #642: one read-only verb
+        self.assertEqual((dyadlib.CLI[("precedent", "prompt")].pos, dyadlib.CLI[("precedent", "score")].pos),
+                         ("<cases-file>", "<cases-file> <answers-a> <answers-b>"))   # #645: four read-only verbs
+        self.assertEqual((dyadlib.CLI[("precedent", "gate")].pos, dyadlib.CLI[("precedent", "agreement")].pos), ("<kept-file>", "<record>"))
+        self.assertEqual((dyadlib.CLI[("precedent", "prompt")].values, dyadlib.CLI[("precedent", "score")].values),
+                         ((("--out", "<file>"),), (("--kept", "<file>"),)))
+
+class GroomFormTests(unittest.TestCase):
+    """#625 step 5: `dyad board groom` is one row of the CLI table, read-only and taking no word or flag."""
+    def test_the_groom_form(self):
+        form = dyadlib.CLI[("board", "groom")]
+        self.assertEqual((form.pos, tuple(form.flags)), ("", ()))
+        self.assertIn("groom", dyadlib.cli_forms("board"))
+
+if __name__ == "__main__":
+    unittest.main()
+
+class GuardRootsTests(livetest.LiveCase):
+    """#155: the registry has two roots — dyad/guards/<corpus>/ and crafts/<craft>/guards/ — and loading is
+    absent-safe. Absent craft (a core-only install): the core half is asserted and the craft half skips (#171)."""
+    def test_guard_files_core_then_craft(self):
+        files = dyadlib.guard_files()
+        keys = [dyadlib.guard_key(p) for p in files]
+        self.assertEqual([k for k in keys if k[0] == "core"] + [k for k in keys if k[0] == "craft"], keys, "core root first, then craft roots")
+        self.assertIn(("core", "agent", "rows"), keys)
+        self.assertNotIn(("core", "workstation", "runbooks"), keys)
+        self.assertTrue(all(not p.name.startswith("_") for p in files))
+        if not livetest.crafts_installed():
+            self.assertEqual([k for k in keys if k[0] == "craft"], [], "a core-only install has no craft guard")
+        self.require_craft("sysadmin")
+        self.assertIn(("craft", "sysadmin", "runbooks"), keys)
+    def test_load_guard_falls_back_to_a_craft_by_corpus(self):
+        self.require_craft("sysadmin")
+        g = dyadlib.load_guard("workstation", "runbooks")
+        self.assertEqual(g.CORPUS, "workstation"); self.assertTrue(str(Path(g.__file__)).endswith("crafts/sysadmin/guards/runbooks.py"))
+        self.assertIs(sys.modules["dyad_guards_workstation_runbooks"], g)                 # importers keep one cache name
+        self.assertIs(dyadlib.load_guard_file(dyadlib.crafts_dir() / "sysadmin" / "guards" / "runbooks.py"), g)
+        with self.assertRaises(FileNotFoundError): dyadlib.load_guard("nowhere", "runbooks")   # a craft guard of another corpus is not it
+    def test_find_guard_none_when_absent(self):
+        self.assertIsNone(dyadlib.find_guard("workstation", "nope"))
+        self.assertIsNone(dyadlib.find_guard("workstation", "runbooks", pkg=Path("/nonexistent/dyad")))
+        self.assertIsNotNone(dyadlib.find_guard("agent", "rows"))
+    def test_craft_glob(self):
+        names = [p.parent.name for p in dyadlib.craft_glob("VERSION")]
+        self.assertEqual(names, sorted(names)); self.assertEqual(names, [d.name for d in dyadlib.craft_dirs()])   # sorted by craft (#160; syseng joins in #162)
+        self.assertEqual(dyadlib.craft_glob("VERSION", Path("/nonexistent/dyad")), [])                            # a core-only install: no crafts/ tree
+        self.assertEqual(dyadlib.crafts_dir(), dyadlib.PKG.parent / "crafts")
+        self.require_craft("sysadmin", "sysarch")
+        # not names[:2] == [...]: a positional claim, true only by accident of these two names'
+        # alphabetical order — false the moment any craft sorts earlier (lan-git does, #181).
+        # Membership is the actual invariant this line is protecting.
+        self.assertIn("sysadmin", names); self.assertIn("sysarch", names)
+
+class LoadModuleTests(unittest.TestCase):
+    """`dyadlib.load_module`'s `sys.dont_write_bytecode` (#185): two earlier reasons for it are
+    refuted (see the docstring); the one that survives is that a by-path import must execute the
+    file on disk, never a `.pyc` whose validation is (mtime-to-the-second, size) and so cannot see
+    a same-size rewrite inside one second. One test on the mechanism, one on that consequence."""
+    NAME = "dyad_test_loadmod_185"
+
+    def setUp(self):
+        # CI exports PYTHONDONTWRITEBYTECODE=1, which would make both tests below pass vacuously
+        # (plan #185 A8). sys.dont_write_bytecode is a runtime flag and outranks the variable for
+        # this process, so set it False here and restore it after.
+        self.prev_flag = sys.dont_write_bytecode
+        sys.dont_write_bytecode = False
+        self.tmp = Path(tempfile.mkdtemp(prefix="dyad-loadmod-185-"))
+
+    def tearDown(self):
+        sys.dont_write_bytecode = self.prev_flag
+        sys.modules.pop(self.NAME, None)
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_no_bytecode_beside_the_file_and_the_flag_restored(self):
+        p = self.tmp / "m.py"; p.write_text("VALUE = 111\n")
+        self.assertEqual(dyadlib.load_module(p, self.NAME).VALUE, 111)
+        self.assertEqual(sorted(x.name for x in self.tmp.iterdir()), ["m.py"])   # no __pycache__
+        self.assertFalse(sys.dont_write_bytecode, "load_module must restore the caller's flag")
+
+    def test_a_same_size_rewrite_under_one_mtime_is_not_served_from_cache(self):
+        """The consequence, not the mechanism: with the suppression removed this fails as
+        `AssertionError: 111 != 222` — `load_module` returning code that is not on disk. The guard
+        registry is loaded only through this function, so that is `dyad check` reporting on a tree
+        other than the head being merged (Rule-2, Binding)."""
+        p = self.tmp / "m.py"; p.write_text("VALUE = 111\n")
+        st = p.stat()
+        self.assertEqual(dyadlib.load_module(p, self.NAME).VALUE, 111)   # the run that would warm a cache
+        sys.modules.pop(self.NAME)
+        p.write_text("VALUE = 222\n")                     # same byte length as the first source
+        os.utime(p, (st.st_atime, st.st_mtime))            # and the same mtime, to the second
+        self.assertEqual(dyadlib.load_module(p, self.NAME).VALUE, 222)
+
+
+class PackageRulesTests(unittest.TestCase):
+    """dyadlib.package_rules (#192): the package file is generic; a host's own strings come from
+    <instance>/package_rules.local.txt and are never in the shipped file."""
+    HOST = "pt-MS-" + "7D75"; LAN = "192." + "168."   # assembled: this test file ships in the package and must not carry a marker
+    def test_package_file_carries_no_host_string(self):
+        r = dyadlib.package_rules(dyadlib.PKG, None)
+        self.assertNotIn(self.HOST, r["string"]); self.assertIn(self.LAN, r["string"])
+        self.assertTrue(all(s.startswith("/ho") and s.endswith("me/") or s == self.LAN or ".claude" in s for s in r["string"]), r["string"])
+    def test_local_file_merges_when_present(self):
+        import tempfile
+        root = Path(tempfile.mkdtemp()); inst = root / "agent-corpus"; inst.mkdir()
+        (inst / dyadlib.RULES_LOCAL).write_text(f"# local\nstring: {self.HOST}\nname: SECRET.md\n")
+        with unittest.mock.patch.dict(os.environ, {"DYAD_INSTANCE": "agent-corpus"}):
+            r = dyadlib.package_rules(dyadlib.PKG, root)
+        self.assertIn(self.HOST, r["string"]); self.assertIn("SECRET.md", r["name"]); self.assertIn(self.LAN, r["string"])
+    def test_local_file_absent_is_fine(self):
+        import tempfile
+        root = Path(tempfile.mkdtemp()); (root / "agent-corpus").mkdir()
+        with unittest.mock.patch.dict(os.environ, {"DYAD_INSTANCE": "agent-corpus"}):
+            self.assertEqual(dyadlib.package_rules(dyadlib.PKG, root), dyadlib.package_rules(dyadlib.PKG, None))
+    def test_this_instance_refuses_its_host_when_it_declares_one(self):
+        root = dyadlib.repo_root(); local = dyadlib.instance(root) / dyadlib.RULES_LOCAL
+        if not local.is_file():
+            self.skipTest("this instance has no package_rules.local.txt (a host with nothing to refuse; dyad-system #1)")
+        r = dyadlib.package_rules(dyadlib.PKG, root)
+        self.assertTrue(any(s not in dyadlib.package_rules(dyadlib.PKG, None)["string"] for s in r["string"]), "the local file adds at least one row")
+
+class RepoRootHookEnv(unittest.TestCase):
+    """#142: repo_root ignores GIT_DIR set by hooks and returns the work tree, not the package dir."""
+    def test_repo_root_under_git_dir(self):
+        import os, subprocess
+        root = dyadlib.repo_root()
+        gd = subprocess.check_output(["git", "rev-parse", "--absolute-git-dir"], cwd=root, text=True).strip()
+        old = os.environ.get("GIT_DIR")
+        os.environ["GIT_DIR"] = gd
+        try:
+            self.assertEqual(dyadlib.repo_root(), root)
+        finally:
+            if old is None: del os.environ["GIT_DIR"]
+            else: os.environ["GIT_DIR"] = old
+
+class TrackedModeTests(unittest.TestCase):
+    """#141: the mode a guard judges is git's, not the disk's — `core.fileMode=false` (NTFS) shows 755 for a
+    file tracked 100644, which passed three ops scripts and shipped an entrypoint that could not exec (#135)."""
+    def repo(self, fileMode=None) -> Path:
+        import shutil, subprocess, tempfile
+        d = Path(tempfile.mkdtemp(prefix="dyad-mode-")); self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        subprocess.run(["git", "init", "-q", str(d)], check=True)
+        if fileMode is not None:
+            subprocess.run(["git", "-C", str(d), "config", "core.fileMode", fileMode], check=True)
+        return d
+    def add(self, root: Path, rel: str, disk=0o755, chmod: str | None = None):
+        import subprocess
+        p = root / rel; p.parent.mkdir(parents=True, exist_ok=True); p.write_text("#!/usr/bin/env bash\n"); p.chmod(disk)
+        subprocess.run(["git", "-C", str(root), "add", "--", rel], check=True)
+        if chmod:
+            subprocess.run(["git", "-C", str(root), "update-index", f"--chmod={chmod}", "--", rel], check=True)
+        return p
+    def test_index_mode_wins_over_the_disk_bit(self):
+        r = self.repo(fileMode="false")
+        self.add(r, "a.sh", disk=0o755, chmod="-x")          # the #135 shape: 755 on disk, 100644 in the index
+        self.assertEqual(dyadlib.tracked_mode(r, "a.sh"), dyadlib.MODE_FILE)
+        self.assertTrue(os.access(r / "a.sh", os.X_OK))
+        self.add(r, "b.sh", disk=0o644, chmod="+x")
+        self.assertEqual(dyadlib.tracked_mode(r, "b.sh"), dyadlib.MODE_EXEC)
+    def test_untracked_and_outside_and_non_repo_are_none(self):
+        import tempfile
+        r = self.repo()
+        (r / "new.sh").write_text("x\n")
+        self.assertIsNone(dyadlib.tracked_mode(r, "new.sh"))
+        self.assertIsNone(dyadlib.tracked_mode(r, "absent.sh"))
+        self.assertIsNone(dyadlib.tracked_mode(r, Path(tempfile.gettempdir()) / "elsewhere.sh"))   # absolute, outside root
+        self.assertIsNone(dyadlib.tracked_mode(r / "gone", "a.sh"))                                # no such directory
+    def test_a_glob_in_the_name_and_a_directory(self):
+        r = self.repo(); self.add(r, "sub/a[1].sh", chmod="+x"); self.add(r, "sub/a1.sh", chmod="-x")
+        self.assertEqual(dyadlib.tracked_mode(r, "sub/a[1].sh"), dyadlib.MODE_EXEC)   # a name, not a pattern
+        self.assertEqual(dyadlib.tracked_mode(r, "sub/a1.sh"), dyadlib.MODE_FILE)
+        self.assertIsNone(dyadlib.tracked_mode(r, "sub"))                             # a directory has no one mode
+    def test_absolute_path_inside_root_resolves(self):
+        r = self.repo(); p = self.add(r, "sub/c.sh", chmod="+x")
+        self.assertEqual(dyadlib.tracked_mode(r, p), dyadlib.MODE_EXEC)
+        self.assertEqual(dyadlib.tracked_mode(r, "sub/c.sh"), dyadlib.MODE_EXEC)
+    def test_git_dir_in_the_environment_is_ignored(self):
+        """#142's shape for the index: a hook exports GIT_DIR/GIT_INDEX_FILE; the answer stays this tree's."""
+        r = self.repo(); self.add(r, "d.sh", chmod="+x")
+        other = self.repo()
+        old = {k: os.environ.get(k) for k in dyadlib.GIT_VARS}
+        os.environ["GIT_DIR"] = str(other / ".git"); os.environ["GIT_INDEX_FILE"] = str(other / ".git" / "index")
+        try:
+            self.assertEqual(dyadlib.tracked_mode(r, "d.sh"), dyadlib.MODE_EXEC)
+            self.assertEqual(dyadlib.git_env().keys() & set(dyadlib.GIT_VARS), set())
+        finally:
+            for k, v in old.items():
+                os.environ.pop(k, None)
+                if v is not None: os.environ[k] = v
+    def test_live_package_entrypoint_and_hooks_are_tracked_executable(self):
+        root = dyadlib.repo_root()
+        for rel in ("dyad/bin/dyad", "dyad/hooks/pre-commit", "dyad/hooks/pre-push"):
+            self.assertEqual(dyadlib.tracked_mode(root, rel), dyadlib.MODE_EXEC, rel)
+
+class CheckInputsTests(unittest.TestCase):
+    def test_the_audit_part_reads_the_code_tree_and_sweep_ci_absence(self):
+        """#619: `sweep_audit` runs in the full sweep only; `sweep_ci` reads the hosting at the home's read alone (F9)."""
+        self.assertIn("sweep_audit", dyadlib.SWEEP_PARTS)
+        self.assertEqual(dyadlib.CHECK_INPUTS["sweep_audit"], (dyadlib.CODE,))
+        self.assertEqual(dyadlib.CHECK_INPUTS["sweep_ci"], (dyadlib.ABSENCE,))
+        self.assertIn("a sweep not delivered", dyadlib.INPUT_TRIGGERS[dyadlib.ABSENCE][0])
+
+class SlugTests(unittest.TestCase):
+    """d-work #622 Decision 1 and 5: the row slug's form, and the preference that presents it."""
+    def test_slug_problem_accepts_and_refuses(self):
+        for ok in ("row-slugs", "release-intent-Y", "release-1.1.0", "macOS-host", "a-b-c-d"):
+            self.assertIsNone(dyadlib.slug_problem(ok), ok)
+        for bad in ("release", "1-x", "a--b", "a-b-c-d-e", "row_slugs", "-a-b", "a-b-", "a-" + "b" * 31):
+            self.assertTrue(dyadlib.slug_problem(bad), bad)
+        self.assertIn("over 32", dyadlib.slug_problem("a-" + "b" * 31))
+    def test_slugs_on_reads_the_preference_absent_off(self):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        self.assertFalse(dyadlib.slugs_on(d))                             # no file: off
+        p = d / dyadlib.PREFERENCES_REL; p.parent.mkdir(parents=True)
+        head = "| key | value | allowed | read by |\n|---|---|---|---|\n"
+        p.write_text(head + "| intent-reading | on | x | Rule-3 |\n")
+        self.assertFalse(dyadlib.slugs_on(d))                             # key absent: off
+        for v, want in (("on", True), ("off", False)):
+            p.write_text(head + f"| dwork-slug | {v} | `on` \\| `off` | Rule-3 |\n")
+            self.assertEqual(dyadlib.slugs_on(d), want, v)
+
+class InvariantTests(livetest.LiveCase):
+    """crafts/syseng/rules/invariants.md: the protocol — INVARIANTS and TREE_INVARIANTS are data, check_invariants runs
+    both sorted, an InvariantError names every false one; `enforce` runs the pure list at import (Rule-12 p1, #203)
+    and the tree list never runs there."""
+    def test_enforce_raises_naming_every_false_one_sorted_and_a_raising_predicate_is_false(self):
+        inv = [("z-false", lambda: False), ("a-true", lambda: True), ("m-raises", lambda: 1 / 0), ("b-false", lambda: 0)]
+        with self.assertRaises(dyadlib.InvariantError) as cm:
+            dyadlib.enforce(inv, "fx")
+        self.assertEqual(cm.exception.failed, ["b-false", "m-raises", "z-false"]); self.assertEqual(cm.exception.module, "fx")
+        self.assertEqual(str(cm.exception), "fx: invariant(s) failed: b-false, m-raises, z-false")
+        self.assertEqual(dyadlib.enforce([("a-true", lambda: True)], "fx"), 1)   # all true: returns the count, raises nothing
+    def test_a_false_invariant_fails_the_import_and_the_tree_list_never_runs_there(self):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        head = "import dyadlib\nRAN = []\nTREE_INVARIANTS = [('tree', lambda: RAN.append(1) or False)]\n"
+        ok, bad = d / "dyad_fx_ok.py", d / "dyad_fx_bad.py"
+        ok.write_text(head + "INVARIANTS = [('holds', lambda: True)]\ndyadlib.enforce(INVARIANTS, __name__)\n")
+        bad.write_text(head + "INVARIANTS = [('holds', lambda: True), ('never', lambda: False)]\ndyadlib.enforce(INVARIANTS, __name__)\nAFTER = 1\n")
+        self.addCleanup(lambda: [sys.modules.pop(n, None) for n in ("dyad_fx_ok", "dyad_fx_bad")])
+        m = dyadlib.load_module(ok)
+        self.assertEqual(m.RAN, [])                                                    # TREE_INVARIANTS: not at import
+        with self.assertRaises(dyadlib.InvariantError) as cm:
+            dyadlib.check_invariants(m)                                                # the pass runs it, and it is red there
+        self.assertEqual((cm.exception.failed, m.RAN), (["tree"], [1]))
+        for attempt in (1, 2):                                                         # never served half-initialised from the cache
+            with self.subTest(attempt=attempt), self.assertRaises(dyadlib.InvariantError) as cm:
+                dyadlib.load_module(bad)
+            self.assertEqual((cm.exception.module, cm.exception.failed), ("dyad_fx_bad", ["never"]))
+            self.assertNotIn("dyad_fx_bad", sys.modules)
+    def test_failed_invariants_raise_with_names_sorted(self):
+        inv = [("z-false", lambda: False), ("a-true", lambda: True), ("m-raises", lambda: 1 / 0), ("b-false", lambda: 0)]
+        with self.assertRaises(dyadlib.InvariantError) as cm:
+            dyadlib.check_invariants(inv, label="fx")
+        self.assertEqual(cm.exception.failed, ["b-false", "m-raises", "z-false"]); self.assertEqual(cm.exception.module, "fx")
+        self.assertEqual(str(cm.exception), "fx: invariant(s) failed: b-false, m-raises, z-false")
+    def test_module_without_invariants_counts_zero_and_extras_are_appended(self):
+        import types
+        m = types.ModuleType("bare")
+        self.assertEqual(dyadlib.check_invariants(m), 0)
+        self.assertEqual(dyadlib.check_invariants(m, extra=[("x", lambda: True)]), 1)
+        with self.assertRaises(dyadlib.InvariantError): dyadlib.check_invariants(m, extra=[("x", lambda: False)])
+    def test_contract_invariants_restate_the_contract(self):
+        import types
+        g = types.ModuleType("g"); g.ENTITY, g.CORPUS, g.FIELDS, g.TRANSACTION = "e", "agent", ("a", "b"), False
+        names = [n for n, _ in dyadlib.contract_invariants(g, "core", "agent")]
+        self.assertEqual(names, ["entity-non-empty", "corpus-matches-directory", "fields-unique-strings", "transaction-implies-check_transaction"])
+        self.assertEqual(dyadlib.check_invariants(g, dyadlib.contract_invariants(g, "core", "agent")), 4)
+        with self.assertRaises(dyadlib.InvariantError) as cm: dyadlib.check_invariants(g, dyadlib.contract_invariants(g, "core", "infra"))
+        self.assertEqual(cm.exception.failed, ["corpus-matches-directory"])
+        g.TRANSACTION = True
+        with self.assertRaises(dyadlib.InvariantError) as cm: dyadlib.check_invariants(g, dyadlib.contract_invariants(g, "core", "agent"))
+        self.assertEqual(cm.exception.failed, ["transaction-implies-check_transaction"])
+        g.FIELDS = ("a", "a"); g.TRANSACTION = False
+        with self.assertRaises(dyadlib.InvariantError) as cm: dyadlib.check_invariants(g, dyadlib.contract_invariants(g, "craft", "x", {"agent"}))
+        self.assertEqual(cm.exception.failed, ["fields-unique-strings"])
+    def test_runner_and_projector_discovery(self):
+        r = dyadlib.runner_module()
+        self.assertEqual(Path(r.__file__), dyadlib.PKG / "scripts" / "package.py"); self.assertIs(dyadlib.runner_module(), r)
+        self.assertTrue(hasattr(r, "INVARIANTS") and hasattr(r, "invariant_modules"))
+        files = dyadlib.projector_files()
+        core = sorted(p.stem for p in (dyadlib.PKG / "scripts").glob("project_*.py"))     # the core craft's own, first (#378)
+        self.assertEqual([p.stem for p in files[:len(core)]], core); self.assertIn("project_countersign", core)
+        self.assertTrue(all(dyadlib.projector_craft(p) == dyadlib.CORE_CRAFT for p in files[:len(core)]))
+        stems = [p.stem for p in files[len(core):]]
+        if not livetest.crafts_installed():
+            self.assertEqual(stems, [], "a core-only install has no craft projector")      # the documented absent-craft behaviour
+            return
+        self.require_craft("sysadmin", "sysarch")
+        # Expected set derived from the tree, not a literal list (#156 I1, the #46/#98 class): any craft
+        # may ship a projector. Order: by craft, then surface.
+        crafts = dyadlib.PKG.parent / "crafts"
+        on_disk = [(p.parents[1].name, p.stem) for p in sorted(crafts.glob("*/projectors/project_*.py"))]
+        self.assertEqual(stems, [s for _c, s in on_disk])
+        self.assertEqual([dyadlib.projector_craft(p) for p in files[len(core):]], [c for c, _s in on_disk])
+        known = {"sysadmin": ["project_events"], "sysarch": ["project_entities", "project_erd", "project_instances", "project_kanban", "project_schema"]}
+        for craft, surfaces in known.items():   # a known craft silently dropping a projector still fails
+            self.assertEqual([s for c, s in on_disk if c == craft], surfaces, craft)

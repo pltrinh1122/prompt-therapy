@@ -1,0 +1,54 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:dyad-operator/ci-red-vs-absent",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "ci-red-vs-absent",
+  "name": "Check red or absent",
+  "description": "Classifies a check result before a ratified merge runs.",
+  "dyad:decides": "Did the checks pass, fail, or not run at all?",
+  "dyad:inputs": [
+    "the kernel-only evidence block on the exact head",
+    "the hosting's CI run, if any"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "passes",
+      "name": "observed passes",
+      "dyad:when": "the guards pass as observed on the exact head and heads are unchanged",
+      "dyad:then": "the named merge may be executed"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "red",
+      "name": "red check",
+      "dyad:when": "a job started and failed",
+      "dyad:then": "the merge is not executed on it"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "absent",
+      "name": "absent",
+      "dyad:when": "an account or adapter failure: no job started",
+      "dyad:then": "not a red check; reported as absent"
+    }
+  ],
+  "dyad:judgedBy": {
+    "dyad:kind": "mechanical",
+    "dyad:implementation": "scripts/automaton.py"
+  },
+  "isPartOf": "urn:dyad:craft:dyad-operator",
+  "dyad:home": "scripts/automaton.py",
+  "dyad:owner": "Rule-2",
+  "dyad:alsoIn": [
+    "rules/RULE-2-no-self-ratify.md"
+  ]
+}

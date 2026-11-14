@@ -1,0 +1,236 @@
+# Rule-11: distribution structure
+
+**Intent:** Shape every craft so it can be built, versioned, released and installed in another
+dyad system without clashes or hand-editing.
+**Target:** a craft (its tree in the repo; the core craft `dyad-operator` at `dyad/` and every Tended craft at `crafts/<craft>/`)
+
+## Boundaries (out of scope)
+- What any guard checks — the System Requirements Rule that owns it.
+- Zones and transactions — Rule-1; a structural change is an infra-zone PR citing a Rule-11 d-work.
+- The content of Rules, vocabulary, preferences — their owning Rules.
+- The host and Tended Rules' content — instance or a Tended craft's; never the core craft.
+- Which craft a rule belongs to — Rule-4 classifies (an Agent Rule binds the agent's process and
+  lives in the core craft; a Tended Rule lives in a Tended craft or in `workstation-corpus/rules/`
+  until extracted).
+- The design behind these kernels — what is craft and what instance, craft-relative paths, the
+  archive and version seed, the entrypoint shape: the sysarch craft's `crafts/sysarch/rules/distribution.md`;
+  the full guard contract and layout: `crafts/sysarch/rules/guards.md`. Rule-11 keeps the sentences
+  Rule-2's Binding and Rule-3's completion evidence rely on (#160).
+
+## Conditions (triggers)
+- A file is added to or moved within a craft.
+- A release is cut (see Ratification events).
+- An install is performed in another session.
+- A craft is exported or installed (`dyad craft export|install`; `dyad build|install` for the core craft).
+- Every push and PR: `dyad/scripts/package.py` (check, build, install; Rule-11 owns it) and, from A4, the release workflow (`dyad-release.yml`).
+- A generated file is tracked (`package.py check` refuses it).
+- `BUNDLE.md` is added or edited, or a craft's `VERSION` changes while a bundle exists (`dyad
+  bundle check|build`).
+
+## Properties
+1. **Craft / instance.** Every tracked file is one or the other. The **core craft**,
+   `dyad-operator` — what this Rule called *the package* — is the one craft every system has; its
+   root is `dyad/`; the falsification records of Rules travel with it (`falsification/rules/`, A6).
+   A **Tended craft** is any other craft; its root is `crafts/<craft>/` (zone `craft`, Rule-1).
+   Every craft is one directory tree with one root (a craft corpus, Rule-1). The guards live under
+   `dyad/guards/<corpus>/`, one module per entity kind beside its data, and a Tended craft's under
+   `crafts/<craft>/guards/` (the layout and the guard contract: `crafts/sysarch/rules/guards.md`).
+   The instance is never inside a craft: `package.py check` refuses host-specific strings and
+   instance artifacts (by name or header) inside the core craft — the list is data,
+   `dyad/scripts/package_rules.txt` (A7) — and the craft guard runs the same scan over every Tended
+   craft.
+2. **No clash on install.** Installing a craft writes only under that craft's root plus, for the
+   core craft, a documented, prefixed set of host-side hooks (workflow files prefixed `dyad-`; one
+   import line in the host's frame). It never overwrites a host file. A Tended craft install writes
+   only `crafts/<craft>/` and its row in `crafts/REGISTRY.md` (the craft registry: craft, version,
+   source, sha256, d-work — instance state in the craft zone, written by `dyad craft install`, never
+   by hand); host-side hooks are the core craft's only. An install refuses to overwrite a tree the
+   receiving system modified or authored (the registry's `sha256` is the proof of an unmodified
+   tree) unless told `--force`, and refuses an unmet `requires:` of the craft's `MANIFEST.md`
+   (`<craft>>=<semver>`, a craft another craft's rules cite; never fetched). A `seeds:` entry of
+   the same file (`<template>-><instance path>`) names an instance file one of the craft's own
+   templates corresponds to; `craft check`/`install` warn when the destination is absent —
+   advisory only, never written by install (host-side hooks stay the core craft's only, above).
+   The one command-line entrypoint is `dyad/bin/dyad`, invoked by path (its shape: `distribution.md`).
+   Every `dyad <noun> [<verb>]` form it accepts is one row of one table, `dyadlib.CLI`, read before anything runs:
+   `-h` or `--help` prints the form's usage and runs nothing, and an unknown flag, a word past the form's positionals
+   or a flag repeated that is read once is refused in one line, exit 1, before any write (#592).
+   A core-owned table that holds craft-varying data accepts a craft-shipped contribution,
+   discovered like a guard and reported under the contributing craft's own name, so the data
+   leaves when the craft does (`agent-corpus/falsification/extensibility.md`, #101). A **bundled
+   craft** is a Tended craft the core release carries: `dyad build` puts its tree in the core's
+   archive and `dyad install` writes it, so a system that installs the core alone still has it.
+   It stays a Tended craft in every other respect — its own root, its own zone, its own `VERSION`
+   and its own `<craft>-vX.Y.Z` tag (property 4) — and it is bundled only because it says so
+   itself, in the contribution shape above (a `BUNDLED_WITH_CORE` declaration in one of its own
+   guard modules, discovered like a guard), never by a list the core keeps: a craft removed from
+   the tree takes its own claim with it. A craft is bundled on one of two grounds and no other:
+   **(a) dependency** — a core Rule cites it by path, since what the core ships and what its own
+   Rules depend on must not disagree, and `dyad/guards/infra/bundle.py` fails a cited craft in the
+   tree that does not declare itself bundled; or **(b) purpose** — it serves the system's purpose
+   (`dyad:purpose` of the identity record, `site/identity.jsonld`, #496) for every installing operator, never
+   one instance's applied domain (`dyad:appliedTo`) alone, judged on the craft's own tree at the version proposed —
+   its rules, guards, templates and tests — and never on the instance's use of it, its published content, an applied
+   domain's results or a pending event (`dmc:bundled-craft`, #663), and its declaration carries a one-line
+   `PURPOSE` reason beside it, which the same guard requires of a declared craft no core Rule cites;
+   that reason is the operator's to ratify, by the done-`Y` of the PR that adds it. Those grounds
+   are the only reasons the core's install may write outside its own root. The registry records the core
+   install too: `dyad install` writes the `dyad-operator` row, its `sha256` the installed `dyad/`
+   tree by the same computation as a Tended craft's row, rewritten only when it differs (#199).
+3. **Craft-relative paths.** Craft files reference their own paths relative to the craft root, and
+   instance paths through one instance location, `DYAD_INSTANCE` (default `agent-corpus`;
+   `crafts/sysarch/rules/distribution.md`). Paths printed in Rule text are the defaults.
+4. **Versioned releases.** Every craft carries a `VERSION` at its root. The core craft's release
+   is a git tag `dyad-operator-vMAJOR.MINOR.PATCH` equal to `dyad-operator-v` + `dyad/VERSION`; a
+   Tended craft's release is a git tag `<craft>-vMAJOR.MINOR.PATCH` equal to `<craft>-v` +
+   `crafts/<craft>/VERSION` — every craft, core or Tended, prefixed by its own name (#191, #196),
+   so a craft's tags never collide with another's or with the bundle's (property 7) in one repo —
+   a craft released on its own cadence in the monorepo that authors it, its archive the `export` of
+   that tag's tree, distributable to a separate repo without moving where the craft is authored.
+   Archive shape and version seed: `distribution.md`. The converse holds too: once a craft's tag
+   exists, the tree under its root at HEAD is the tree that tag holds, or `VERSION` has moved —
+   `dyad/guards/infra/bundle.py` `check_drift` fails the push that differs from its own tag under
+   an unchanged `VERSION`, and skips with one line where the tag does not resolve locally (#91,
+   after four drifted releases in two days: #61, #67, #71, #90).
+5. **Built and installed by one code path, tested in CI.** A craft, core or Tended, is built and
+   installed by `dyad/scripts/distribute.py` — `dyad build|install` for the core craft (with the
+   core's hooks), `dyad craft export|install` for a Tended craft (`dyad/scripts/craft.py`, no
+   hooks) — and the difference between them is data (the hook set), not a second path; CI installs
+   the core and a Tended craft into a scratch repo and runs the guards there (`dyad-package.yml`).
+   The hook ships at `dyad/hooks/pre-commit`; an install sets `core.hooksPath dyad/hooks` and never
+   writes a host's `.githooks/`. A failing craft is neither exported nor installed. That the build
+   is deterministic and the install idempotent (a second install is `0 changes`) is the syseng
+   craft's discipline: `crafts/syseng/rules/idempotence.md` (property 1) and
+   `crafts/syseng/rules/determinism.md` (property 4).
+6. **Generated files are never tracked.** `package.py check` refuses any tracked path matching a
+   generated pattern; the list is data (`package_rules.txt`, `generated:` entries, ledger #108).
+   What counts as generated and why it is never committed is the syseng craft's
+   `crafts/syseng/rules/determinism.md` (property 1).
+7. **Bundle release.** The whole distribution this repo authors — the core craft plus every Tended
+   craft in the tree — is named at pinned versions by one bundle manifest, `BUNDLE.md` at the repo
+   root (infra zone, Rule-1: a distribution artifact of the authoring repo, never craft content, so
+   a core-only install carries no bundle naming a craft it lacks; property 1's instance-inside-a-craft
+   refusal is unaffected — the bundle sits outside every craft). One row per craft in the tree, each
+   row's version equal to that craft's live `VERSION`; the bundle carries its own version, independent
+   of the core's — a craft-only change bumps the bundle, never forcing an unrelated core bump. An
+   unreleased craft (no `<craft>-vMAJOR.MINOR.PATCH` tag of its own, property 4) may be absent from
+   the bundle until its first release, whose release adds its row; a released craft without a row
+   fails. A released craft whose live `VERSION` has moved ahead of its tag may run ahead of its row,
+   which still names its last release, until the infra-zone PR that updates the row; the guard warns
+   meanwhile, and fails once the new version is itself tagged. The same holds of a row that names a version no tag
+   holds — a number set for a cut not yet made (#522's 0.12.3): a live `VERSION` moved past it warns until the
+   infra-zone PR moves the row, and fails once the live version is tagged, so such a row never pins the craft's
+   `VERSION`; a row naming the live, untagged version is a cut being prepared and passes, and a row ahead of the
+   live `VERSION` fails (#481). A released craft that has left the tree — renamed or retired by
+   a craft-zone PR — may keep its row, which still names its last release, until the infra-zone PR that removes
+   it; the guard warns meanwhile, and a row naming a component that never held a release tag of its own still
+   fails. Its release is a git tag `vMAJOR.MINOR.PATCH` equal to `v` + `BUNDLE.md`'s version: the
+   unprefixed form, the GitHub convention and the repo's one front door, built by sequencing
+   property 5's one code path once per row (never a second build mechanism) and publishing every
+   component's archive together. A system that wants only some components pins them individually by their own crafts'
+   tags (property 4); the bundle is the convenience of pinning all of them at once, never the only way.
+
+## Ratification events
+- Answering `Y` to a release counter-prompt, form `Y/N: release <tag>?` — `<tag>` is
+  `vMAJOR.MINOR.PATCH` for the bundle (property 7), `dyad-operator-vMAJOR.MINOR.PATCH` for the core
+  craft and `<craft>-vMAJOR.MINOR.PATCH` for a Tended craft (property 4). The `Y` binds to that one
+  tag only; creating and pushing the tag, exporting the archive, publishing any artifact it names
+  (an image, an archive to a distribution repo) are clerical execution of it. Rule-2 applies by
+  reference (S2). A release publishes to the world, so it is the operator's to ratify however few
+  d-works it gathers — distinct from a d-work's done-`Y`, which verifies that d-work's own output.
+- Or, naming several tags in one question — `Y/N: release <tag-a>, <tag-b>, <tag-c>?` — whose
+  content was already verified and ratified by one d-work's own done-`Y`, each tag already named
+  individually, unmerged, in the same reply's completion evidence before this question (the same
+  discipline Rule-3's own Done-batch items already carry). Never a tag of a different d-work;
+  never folded into Rule-3's plan or Done batch, so a release stays its own, visibly-a-publication
+  moment. A `Y` ratifies exactly the named tags; anything else, none of them (Rule-2, Binding).
+- Under the **release gate** (the hosting's required approval of the publishing run, on while the repository
+  variable `RELEASE_APPROVAL` is `tap`), neither question is asked. A release d-work's plan-`Y` names its tags and
+  numbers; its Done question names the PR whose merge is the cut and those tags — `Y/N: Done with #<id> <title>
+  (merges PR #a, releases <tag-a>, <tag-b>)?` — and that done-`Y` ratifies the release, because it verified the
+  bytes the cut holds. It ratifies only behind a mechanical **fence**: the tree under each released craft's root at
+  the cut equals that root at the head the done-`Y` names, and each archive's sha256 is the build of the cut
+  (property 5, deterministic). Only then is a **release-ready entry** written for each tag in the row's `disposed`
+  column, `<date> release-ready <tag> at <cut sha> (archive <sha256>)` (`dyad release ready`, which checks the
+  fence): the agent's statement that the fence held, carrying no `Y` or `N`, so never a disposition and never
+  counted as one (Rule-7 property 5). The publishing
+  run it starts waits for the operator's approval on the hosting, which **authenticates** the done-`Y` for the one
+  irreversible act — the one input no agent can forge, since every other `Y` reaches the hosting as a ledger line
+  an agent wrote (#541, A1) — and decides nothing new; a rejected or expired run publishes nothing. The approval is
+  recorded as one `Y release` entry per tag, by reference (Rule-7 property 4). When the gate is off, or the fence
+  fails for any tag, the release returns to the question above, asked in chat.
+
+## Enforcement
+`dyad/scripts/package.py check` on every push and PR (A5): a runner that first runs the invariant
+pass — every model module's `INVARIANTS`, one `[invariant]` line each, before any check
+(`crafts/syseng/rules/invariants.md`; the term `invariant` is Rule-12's) — then Rule-12's check
+and every guard of the registry it discovers under `dyad/guards/` and every Tended craft's
+`crafts/<craft>/guards/` (`check --list` prints it) and owns none of their semantics; Rule-11's own
+check is structural — craft versus instance, paths, VERSION (S4). The same structural check over
+every Tended craft is the craft guard, `dyad/guards/craft/crafts.py` (entity `craft`, corpus `craft`,
+data `dyad/guards/craft/crafts_rules.txt`; the runner invokes it as `craft/crafts`; `dyad craft check`
+runs it by hand): `VERSION` one semver line; no instance state inside the tree
+(`distribute.instance_state`, the scan the core uses, with `package_rules.txt` plus the
+craft-specific names — `REGISTRY.md`, `events/`, `rows/`, `*.jsonl`); the craft vocabulary namespaced
+(`vocabulary.py check_craft`, Rule-6's); every craft guard meets the contract (`dyadlib.contract_problem`,
+the one definition `crafts/sysarch/rules/guards.md` describes); agent-process tokens in a Tended rule
+warn (`rules.py check_tended`, Rule-4's); an unmet `requires:` warns at check and fails at install.
+The guard composes those scans by import; it owns only the craft's shape (S4). Property 7's bundle
+is checked the same way: `dyad/guards/infra/bundle.py` (entity `bundle`, corpus `infra`; a missing
+`BUNDLE.md` skips, never fails — property 4's absent-store pattern), registered by discovery like
+every other guard (no hand-listing here either); its property 2 check — a cited craft undeclared, a
+declaration with neither citation nor `PURPOSE` — runs with or without `BUNDLE.md`, and reads each
+declaration as text, never executing it.
+
+## Provenance
+Operator rule, 2026-09-13 (Architecture Rule 1). Falsified; see
+`../falsification/rules/rule-11-distribution-structure.md`. Reframed 2026-09-14 (#154, per #153
+revision 2): the package is the core craft; properties bind every craft. One distribution code path,
+the craft guard, `crafts/REGISTRY.md`: 2026-09-14 (#156, attacks A8–A18). Design clauses (p1's
+craft/instance lists, p3's mechanism, p4's archive shape, the entrypoint shape) moved to
+`crafts/sysarch/rules/distribution.md` 2026-09-14 (#160); the kernel stays here. Implementation
+clauses (p5's determinism and idempotence, p6's discipline) moved to `crafts/syseng/rules/idempotence.md`
+and `crafts/syseng/rules/determinism.md` 2026-09-14 (#162); one-line stubs keep the data and the
+check here; the runner's invariant pass is named in Enforcement. Property 2 gains one sentence,
+`MANIFEST.md` `seeds:` (advisory instance-seed mapping; never written by install) 2026-09-14 (#180).
+Property 7 added, property 4 reprefixed (#196, d-work #21): the core craft's tag gains the
+`dyad-operator-` prefix it lacked, freeing the unprefixed `vX.Y.Z` for a new bundle release naming
+the whole distribution — `v0.3.1`, `v0.3.2`, `v0.4.0` predate this and stay core-only tags, cut
+under the superseded convention, never retagged (tags do not move). See
+`../falsification/rules/rule-11-distribution-structure.md`, amendment #196. Property 4 gains its
+converse and the drift guard 2026-09-18 (d-work #91); see the same record, amendment #91. Property
+2 gains the craft-contribution sentence 2026-09-20 (d-work #100, per #101's survivor); see the same
+record, amendment #100. Ratification events gains the release-batch form 2026-09-21 (d-work #106):
+several tags whose content one d-work's own done-`Y` already verified, each already named
+individually beforehand — split from destructive's unconditional one-per-question rule, which
+rested on a different, unaffected basis; see the same record, amendment #106. Property 2 gains the
+bundled craft 2026-09-22 (d-work #114): four core Agent Rules cite `crafts/sysadmin/` by path while
+the core release shipped without it, and a core-only install of `main` was red; see the same
+record, amendment #114. Property 7 gains the unreleased-craft sentence 2026-09-24 (d-work #156):
+adding any new craft had no order satisfying both Rule-1 (one zone per PR) and the bundle guard; see
+the same record, amendment #156 (2026-09-24). Property 2 gains the core's registry row 2026-10-01
+(d-work #199, node N5 for backlog row #176): an operating system's push gate ran the core's whole
+suite over a tree it had installed unmodified, and only a recorded sha can show that it is; see the
+same record, amendment #199. Property 7 gains the released-craft sentence 2026-10-07 (d-work #230,
+row #170): changing a released craft needs a craft-zone `VERSION` bump and an infra-zone row, and no
+order landed both; see the same record, amendment #230. Property 7 gains the departed-craft sentence 2026-10-25 (d-work #423):
+renaming a released craft (#417, `cos` → `cabinet`) needs a craft-zone move and an infra-zone row removal, and the
+bundle guard failed each one alone; see the same record, amendment #423. Property 2 gains the
+two grounds for a bundled craft 2026-10-27 (d-work #504): core Rules cited four crafts by path and only
+one declared itself bundled, so a core-only install shipped Rules citing three crafts it did not carry,
+and the one reason written down named a symptom of the system's purpose rather than the purpose; see
+the same record, amendment #504. Property 7 gains the untagged-row sentence 2026-10-29 (d-work #481, mandate
+#527): a row naming a version no tag held pinned `VERSION`, since any bump past it failed and Rule-1 forbade the row's
+fix in the same PR, the version/zone face of mode M one state further (incident row 216); see the same record,
+amendment #481. Ratification events gains the release gate 2026-11-01 (d-work #545): a release
+d-work's done-`Y` had already verified the bytes of the cut, so the chat question after it was a second ask of the same
+decision, while the hosting approval stays as the authentication no agent can forge; see the same record, amendment
+#545. Operator and agent are lowercase in prose and done-`Y` replaces Done-`Y`, 2026-11-02
+(d-work #553): the dyad-native terms; see `../falsification/rules/rule-6-vocabulary.md`, amendment #553 (part D). Property 2 states the
+one table every `dyad` form is read through 2026-11-05 (d-work #606, stating #592's gate); see
+`../falsification/rules/rule-3-d-work.md`, amendment #606. Property 2's purpose ground is judged on the craft's own tree, and the identity record's
+path is corrected, 2026-11-10 (d-work #663): with no evidence named, a bundling decision had been left to wait on an
+instance event, season 1's episode 0 (#514); see
+`../falsification/rules/rule-11-distribution-structure.md`, amendment #663.
+
+Set: System Requirements (kernel; content: crafts/sysarch/rules/distribution.md, crafts/syseng/rules/idempotence.md, crafts/syseng/rules/determinism.md).

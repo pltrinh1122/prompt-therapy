@@ -1,0 +1,91 @@
+name: d-work automaton
+# The d-work automaton (d-work #556; backlog #542 absorbed): the d-work's clerical edges run from ledger lines by a
+# party that decides nothing, the countersign model's executor (#553's automaton). On a push to main touching the
+# ledger's rows or board, it runs `dyad automaton run` at main's own reviewed code (never a seat's working tree, A2):
+#   (a) merges every PR a recorded operative `Y done` names, pinned to the head it names and in its order, by the
+#       record-bound `dyad merge` (a race to main retried with backoff);
+#   (b) closes a row whose every named head landed, with its accreted rows and its board entry
+#       (`dyad steps close-landed --land`);
+#   (c) posts one inbox notice to each board owner of a row just planned.
+# Then (#617): the whole-store guards on main (`dyad automaton sweep --stores --row 564`: no suite, new findings only),
+# and, when `run` landed a merge (its output `landed`), a dispatch of the full sweep (`dyad-sweep.yml`) once for the cut.
+# A refusal decides nothing: one notice to the home's inbox. Stateless and idempotent: every run re-reads main, so a
+# run may be retried and a run that dies loses nothing. Its pushes go through the same pre-push gate as a seat's
+# (core.hooksPath dyad/hooks, Rule-14 property 3), and its commits carry the workflow's identity.
+# The switch is the operator's: the repository variable DYAD_AUTOMATON must be `on`, or the job is skipped.
+on:
+  push:
+    branches: [main]
+    paths: ["agent-corpus/d-work/**", "workstation-corpus/runbooks/events/**"]   # every ledger push (#617) and every events push (#618 H2): the stores step reads every store; inbox: typed events (#587 X10)
+  workflow_dispatch: {}
+# Two jobs (#587 X10). `evidence` runs the PR heads' own code to take combined evidence, so it holds no write token:
+# `contents: read`, no persisted credentials, and AUTOMATON_EVIDENCE_SANDBOX=on, the only place `automaton evidence`
+# runs. It fires nothing and hands its verdicts, one JSON line each, to `run` as an artifact. `run` holds the write
+# token and never runs PR code: `run --evidence-from` checks each line strictly (shape, verdict, row in verifying,
+# heads recorded and live) and drops a bad line with a reason. With no artifact, `run` takes every other act and
+# tells home of each evidence act it could not take.
+permissions: {}
+concurrency: { group: dyad-automaton, cancel-in-progress: false }
+jobs:
+  evidence:
+    if: vars.DYAD_AUTOMATON == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 0, fetch-tags: true, persist-credentials: false }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: combined evidence of every verifying row (read-only, sandbox)
+        env:
+          AUTOMATON_EVIDENCE_SANDBOX: "on"
+        run: python3 dyad/scripts/package.py automaton evidence --out "$RUNNER_TEMP/evidence.jsonl"
+      - uses: actions/upload-artifact@v4
+        with: { name: automaton-evidence, path: "${{ runner.temp }}/evidence.jsonl", retention-days: 1, if-no-files-found: ignore }
+  run:
+    needs: evidence
+    if: always() && vars.DYAD_AUTOMATON == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write   # #617: this job alone dispatches the full sweep after a landed cut
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 0, fetch-tags: true }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/download-artifact@v4
+        continue-on-error: true   # no artifact (the evidence job failed or wrote none): run without it
+        with: { name: automaton-evidence, path: "${{ runner.temp }}/evidence" }
+      - name: run the d-work automaton
+        id: run
+        env:
+          DYAD_SESSION: automaton   # the inbox sender's seat
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config core.hooksPath dyad/hooks   # every push through the gate a seat's push passes
+          python3 dyad/scripts/package.py automaton scan
+          ev="$RUNNER_TEMP/evidence/evidence.jsonl"
+          if [ -f "$ev" ]; then
+            python3 dyad/scripts/package.py automaton run --evidence-from "$ev"
+          else
+            python3 dyad/scripts/package.py automaton run
+          fi
+      - name: the whole-store guards after a ledger push (#617; no suite, new findings only)
+        if: ${{ !cancelled() }}
+        env:
+          DYAD_SESSION: automaton
+        run: |
+          SECONDS=0
+          python3 dyad/scripts/package.py automaton sweep --stores --row 564
+          echo "stores step: ${SECONDS} s"
+      - name: dispatch the full sweep once for a landed cut (#617 P1)
+        if: ${{ !cancelled() && steps.run.outputs.landed == 'true' }}
+        env:
+          GH_TOKEN: "${{ github.token }}"
+        run: gh workflow run dyad-sweep.yml --ref main --repo "${{ github.repository }}"

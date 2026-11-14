@@ -1,0 +1,125 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:dyad-operator/promotion",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "promotion",
+  "name": "Backlog promotion",
+  "description": "Which backlog rows the home proposes to open when a unit is idle or about to be, ranked by class and by adjacency to an anchor.",
+  "dyad:decides": "A unit is idle, or about to be, and no counter-prompt the home asked is unanswered: which backlog candidates does the home propose, in what order?",
+  "dyad:inputs": [
+    "idle: a unit no row that is not terminal waits on; about to be idle: a unit whose one waiting row's next is a Done draft or a review; an empty board is every unit idle",
+    "owed: a counter-prompt the home asked that is unanswered, the board question of a row routed home or a pending queue that is not empty; work waiting in a paired unit's own chat is not owed",
+    "the backlog rows, their plans, refs and titles",
+    "the anchors: every row on the board and the row just delivered, with their plan files and completion evidence",
+    "the board's promised entries",
+    "the home's read of backlog hygiene (dyad board resume), for a backlog row a commit already claims",
+    "the charters of the instance's mandates table, for the unit that owns a candidate's files",
+    "the failure-mode derivation of the incident log, for a candidate's incident mode",
+    "a candidate need not be a row: a promise or a finding, named by its source (promise on #N, I12 on #N, finding) and a one-line title",
+    "absorbed: another row's plan names the candidate as carried by it; dependency: the candidate's fix is assumed by another's, or another's refs or plan name it as a prerequisite; impact, within P1: blocks or corrupts work, then misleads a reading, then cosmetic; dependency and impact are inferred and carry their reason",
+    "adjacency, of a candidate to an anchor: S1 (the anchor's plan or completion evidence deferred it or named it as not built or a follow-up) or S2 (it was promised while working the anchor) alone, or a score of at least 3 from S3 shared files 2 (only files under a fifth of the stored plans touch), S4 shared mechanism (a verb, a guard or a store) 2, S5 refs edge 1, S6 same owning unit 1 (counted only when the anchor's board owner names exactly one unit), S7 same incident mode 1; S1 and S5 are read from records, S2, S3, S4, S6 and S7 are inferred and carry their reason",
+    "the release plan, from the release-plan line of the home's cross-row board file (dmc/release-plan.jsonld): which candidates fall into the next release"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "P1",
+      "name": "a live defect",
+      "dyad:when": "the row is a defect in a live mechanism, or a monitoring gap",
+      "dyad:then": "proposed first",
+      "dyad:effect": "settles"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "P2",
+      "name": "a promise",
+      "dyad:when": "a promised entry of the board made while working an anchor names the work, matched to the row by the home",
+      "dyad:then": "proposed after P1",
+      "dyad:effect": "settles"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "P3",
+      "name": "a fired trigger",
+      "dyad:when": "the row waits on a named event and that event has come",
+      "dyad:then": "proposed after P2",
+      "dyad:effect": "settles"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "P4",
+      "name": "adjacent to the last delivered row",
+      "dyad:when": "the row is adjacent to the row just delivered",
+      "dyad:then": "proposed after P3",
+      "dyad:effect": "settles"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "P5",
+      "name": "worked under backlog",
+      "dyad:when": "the home's read shows a commit claiming the row while it is still backlog; its other hygiene findings (orphaned, untouched, malformed) are reasons to read a row, never grounds to retire it or to promote it",
+      "dyad:then": "proposed after P4",
+      "dyad:effect": "settles"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "P6",
+      "name": "the oldest valid row",
+      "dyad:when": "the row is the oldest backlog row whose reason still holds and that no other row's plan absorbs",
+      "dyad:then": "proposed after P5",
+      "dyad:effect": "settles"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "none",
+      "name": "not a candidate",
+      "dyad:when": "the row is in no class above, duplicates another row, or is absorbed by another row's plan",
+      "dyad:then": "not proposed; a duplicate is replaced by the row it duplicates, and an absorbed row is proposed only through the row that absorbed it, with the reason stated",
+      "dyad:effect": "skips"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "hold",
+      "name": "no proposal",
+      "dyad:when": "no unit is idle or about to be, or a counter-prompt the home asked is unanswered",
+      "dyad:then": "nothing is proposed and nothing reaches the operator (the message-overhead criterion)",
+      "dyad:effect": "skips"
+    }
+  ],
+  "dyad:precedence": "P1 before P2 before P3 before P4 before P5 before P6; within a class a candidate the release plan places in the next release comes first, then a candidate another depends on, and within P1 the higher impact; then ties go to an idle unit before a new one, then to one writer per file, then to the smaller plan; at most the smaller of 2 and the number of idle units are proposed, each with a different owner; the proposal is one question naming each candidate with its class, reason and owner, and a Y opens each named row (backlog to open, the operator's words its prompt entry) and one new row, born open, for each named promise or finding; under organization flat there is one unit, so S6 and the unit tie-breaks drop out; adjacency moves to its own adjacency.jsonld when a second decision needs it",
+  "dyad:default": "no proposal",
+  "dyad:tunables": [
+    {
+      "dyad:preference": "promotion-ceiling",
+      "dyad:defaultValue": "2",
+      "dyad:allowed": "a positive integer (rows proposed at once, never more than the idle units)",
+      "dyad:readBy": "playbooks/d-work.md"
+    },
+    {
+      "dyad:preference": "promotion-adjacency-min",
+      "dyad:defaultValue": "3",
+      "dyad:allowed": "a positive integer (the adjacency score that alone makes a candidate adjacent)",
+      "dyad:readBy": "playbooks/d-work.md"
+    }
+  ],
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:dyad-operator",
+  "dyad:home": "playbooks/d-work.md",
+  "dyad:alsoIn": [
+    "dmc/message-overhead.jsonld",
+    "dmc/retirement-candidate.jsonld",
+    "dmc/release-plan.jsonld"
+  ],
+  "dyad:owner": "Rule-3"
+}

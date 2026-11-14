@@ -1,0 +1,47 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:dyad-operator/parent-askable",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "parent-askable",
+  "name": "Parent Done askable",
+  "description": "Decides whether a parent row's completion counter-prompt may be asked.",
+  "dyad:decides": "May the parent's Done question be asked?",
+  "dyad:inputs": [
+    "each child row's state",
+    "each child's recorded Done-Y and its merge"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "askable",
+      "name": "asked only when",
+      "dyad:when": "every child is terminal (done or archived), blocked or backlog, or carries its own recorded done-Y and waits on its merge",
+      "dyad:then": "the parent's question may be asked; its evidence names each child's state"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "unaskable",
+      "name": "unaskable",
+      "dyad:when": "any child is still open or planned without a recorded Done-Y",
+      "dyad:then": "the parent's question is not asked yet"
+    }
+  ],
+  "dyad:judgedBy": {
+    "dyad:kind": "mechanical",
+    "dyad:implementation": "guards/agent/rows.py"
+  },
+  "isPartOf": "urn:dyad:craft:dyad-operator",
+  "dyad:home": "guards/agent/rows.py",
+  "dyad:owner": "Rule-3",
+  "dyad:alsoIn": [
+    "rules/RULE-3-d-work.md"
+  ]
+}

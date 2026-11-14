@@ -1,0 +1,332 @@
+"""craft.py (`dyad craft list | check | export | install`, Rule-11 p5, #156) in a scratch repo with the core craft
+installed: list, check, export (file name, determinism, entries), install twice -> `0 changes`, install refuses a
+modified tree without --force and --force overwrites, `requires` refused, the registry row rewritten only when
+different, a failing craft is neither exported nor installed, nothing outside crafts/<name>/ + REGISTRY.md written
+(A11) even when the craft declares `seeds:` (#180) — install prints a reminder for an absent seed and stays silent
+once it exists, but never writes it itself."""
+import hashlib, os, shutil, subprocess, sys, tarfile, unittest
+from pathlib import Path
+PKG = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PKG / "scripts"))
+import dyadlib, livetest
+
+GUARD = 'ENTITY, CORPUS, TRANSACTION = "widget", "workstation", False\nFIELDS = ("a",)\ndef check_package(root): return []\n'
+CRAFT = {"VERSION": "0.2.0\n", "rules/r.md": "# r\n", "vocabulary/CRAFT.md": "| term | definition | rule |\n|---|---|---|\n| widget | a thing | r |\n",
+         "templates/t.md": "# t\n", "guards/w.py": GUARD, "docs/d.md": "# d\n", "falsification/rules/r.md": "# rec\n"}
+
+HOME = "/ho" + "me/pt"; MARK = "/ho" + "me/"   # a package_rules.txt marker, assembled so this file carries none (Rule-11 p1)
+
+def env():
+    return {**os.environ, "DYAD_NO_NESTED_TESTS": "1"}
+
+def git(d, *a):
+    subprocess.run(["git", "-C", str(d), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True)
+
+SCRATCH = livetest.ScratchInstalls()   # one real core install per module run, copied per case (#138; lifted to livetest by #163)
+tearDownModule = SCRATCH.cleanup       # every scratch dir, templates included; atexit is the backstop
+
+def scratch() -> Path:
+    """An independent copy of ONE real core install made per module run (#138): its bytes, modes, index and commit, with
+    new inodes and mtimes; every copy shares one HEAD sha. The real install itself is tested in test_package.py."""
+    return SCRATCH.copy(with_craft=False)
+
+def author(d: Path, name="fx", files=CRAFT):
+    for rel, text in files.items():
+        f = d / "crafts" / name / rel; f.parent.mkdir(parents=True, exist_ok=True); f.write_text(text)
+    git(d, "add", "-A"); git(d, "commit", "-qm", f"author {name}")
+
+def dyad(d: Path, *a):
+    return subprocess.run([sys.executable, str(d / "dyad" / "scripts" / "package.py"), "craft", *a], capture_output=True, text=True, env=env(), cwd=d)
+
+def snapshot(d: Path) -> dict[str, str]:
+    return {p.relative_to(d).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in d.rglob("*") if p.is_file() and ".git/" not in p.relative_to(d).as_posix() and "__pycache__" not in p.parts}
+
+class CraftCliTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.src = scratch(); author(cls.src)                       # the authoring system
+        r = dyad(cls.src, "export", "fx", str(cls.src / "fx.tar.gz")); assert r.returncode == 0, r.stdout + r.stderr
+        cls.archive = cls.src / "fx.tar.gz"
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.src, ignore_errors=True)
+    def setUp(self):
+        self.dst = scratch()                                        # the receiving system
+    def tearDown(self):
+        shutil.rmtree(self.dst, ignore_errors=True)
+
+    def test_usage(self):
+        r = dyad(self.dst); self.assertEqual(r.returncode, 2); self.assertIn("dyad craft list", r.stderr)
+        r = dyad(self.dst, "export"); self.assertEqual(r.returncode, 2)
+        r = dyad(self.dst, "export", "nope"); self.assertEqual(r.returncode, 2); self.assertIn("no craft crafts/nope", r.stderr)
+    def test_new_scaffold_passes_check_and_is_never_overwritten(self):
+        """#165: `dyad craft new <name>` scaffolds a craft that passes `craft check`; a second run refuses; names are checked."""
+        r = dyad(self.dst, "new", "zzz"); self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("scaffolded crafts/zzz 0.1.0", r.stdout)
+        d = self.dst / "crafts" / "zzz"
+        for rel in ("VERSION", "README.md", "rules/README.md", "vocabulary/CRAFT.md", "templates/README.md", "guards/README.md", "docs/README.md", "falsification/rules/README.md"):
+            self.assertTrue((d / rel).is_file(), rel)
+        self.assertEqual((d / "VERSION").read_text(), "0.1.0\n")
+        r = dyad(self.dst, "check", "zzz"); self.assertEqual(r.returncode, 0, r.stdout + r.stderr); self.assertIn("ok   [craft] crafts/zzz 0.1.0", r.stdout)
+        r = dyad(self.dst, "list"); self.assertIn("zzz", r.stdout); self.assertIn("authored", r.stdout)
+        before = snapshot(self.dst)
+        r = dyad(self.dst, "new", "zzz"); self.assertEqual(r.returncode, 2); self.assertIn("exists; not overwritten", r.stderr); self.assertEqual(snapshot(self.dst), before)
+        for bad in ("Zzz", "1x", "a_b", "dyad-operator"):
+            r = dyad(self.dst, "new", bad); self.assertEqual(r.returncode, 2, bad)
+        r = dyad(self.dst, "new"); self.assertEqual(r.returncode, 2)
+    def test_list_authored_and_core(self):
+        r = dyad(self.src, "list")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = [l.split() for l in r.stdout.splitlines()]
+        self.assertEqual(lines[0], ["craft", "version", "origin"]); self.assertEqual(lines[1][:3], ["dyad-operator", (PKG / "VERSION").read_text().strip(), "core"])
+        self.assertIn(["fx", "0.2.0", "authored"], lines[2:])   # after the core row; bundled crafts the install brought may list too (#504)
+    def test_check(self):
+        r = dyad(self.src, "check", "fx"); self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("ok   [craft] crafts/fx 0.2.0", r.stdout)
+        r = dyad(self.src, "check"); self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("ok   [craft] crafts/fx 0.2.0", r.stdout)
+        r = dyad(self.src, "check", "nope"); self.assertEqual(r.returncode, 2)
+    def test_export_name_entries_and_determinism(self):
+        r = dyad(self.src, "export", "fx"); self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("exported crafts/fx 0.2.0 -> fx-0.2.0.tar.gz", r.stdout); self.assertTrue((self.src / "fx-0.2.0.tar.gz").exists())
+        self.assertEqual(hashlib.sha256((self.src / "fx-0.2.0.tar.gz").read_bytes()).hexdigest(), hashlib.sha256(self.archive.read_bytes()).hexdigest())
+        with tarfile.open(self.archive) as tar:
+            self.assertEqual(tar.getnames(), sorted(f"crafts/fx/{k}" for k in CRAFT))
+    def test_failing_craft_not_exported_nor_installed(self):
+        bad = scratch(); author(bad, files={**CRAFT, "docs/d.md": f"backups at {HOME}/b\n"})
+        r = dyad(bad, "export", "fx", str(bad / "bad.tar.gz")); self.assertEqual(r.returncode, 1); self.assertIn(f"host-specific string '{MARK}'", r.stderr); self.assertIn("not exported", r.stderr)
+        self.assertFalse((bad / "bad.tar.gz").exists())
+        before = snapshot(self.dst)
+        r = dyad(self.dst, "install", str(bad / "crafts" / "fx")); self.assertEqual(r.returncode, 1); self.assertIn("not installed", r.stderr)
+        self.assertFalse((self.dst / "crafts" / "fx").exists()); self.assertEqual(snapshot(self.dst), before)   # nothing written; crafts/ may already hold a bundled craft (#114)
+        shutil.rmtree(bad, ignore_errors=True)
+    def test_install_twice_writes_only_the_craft_and_registry(self):
+        before = snapshot(self.dst)
+        r = dyad(self.dst, "install", str(self.archive), "--dwork", "156")
+        self.assertEqual(r.returncode, 0, r.stderr); self.assertEqual(r.stdout.strip(), f"installed crafts/fx 0.2.0: {len(CRAFT) + 1} changes")
+        after = snapshot(self.dst)
+        self.assertEqual({k for k in after if k not in before or after[k] != before[k]}, {f"crafts/fx/{k}" for k in CRAFT} | {"crafts/REGISTRY.md"})   # A11: nothing else
+        reg = (self.dst / "crafts" / "REGISTRY.md").read_text()
+        self.assertIn("| craft | version | source | sha256 | d-work |", reg)
+        row = [l for l in reg.splitlines() if l.startswith("| fx |")][0].split("|")
+        self.assertEqual([c.strip() for c in row[1:6]], ["fx", "0.2.0", "fx.tar.gz", row[4].strip(), "#156"]); self.assertEqual(len(row[4].strip()), 64)
+        r = dyad(self.dst, "install", str(self.archive)); self.assertEqual(r.returncode, 0, r.stderr); self.assertEqual(r.stdout.strip(), "installed crafts/fx 0.2.0: 0 changes")
+        self.assertEqual(snapshot(self.dst), after)   # the registry row is rewritten only when different (d-work kept)
+        r = dyad(self.dst, "list"); self.assertIn(f"fx               0.2.0      installed {row[4].strip()[:8]}", r.stdout)
+        self.assertFalse((self.dst / "CLAUDE.md").read_text().count("@dyad/CLAUDE.md") > 1)
+    def test_seeds_are_advisory_never_written(self):
+        """#180: `seeds:` is read-only metadata. Install still writes only crafts/fx/** + REGISTRY.md (A11
+        extended); it prints a reminder naming the `cp` to run while the destination is absent, and falls
+        silent once the Operator has copied it by hand — nothing here ever creates the destination file."""
+        src2 = scratch(); author(src2, files={**CRAFT, "MANIFEST.md": "name: fx\nseeds: t.md->workstation-corpus/fx-seed.md\n"})
+        r = dyad(src2, "check", "fx"); self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = dyad(src2, "export", "fx", str(src2 / "fx.tar.gz")); self.assertEqual(r.returncode, 0, r.stderr)
+        before = snapshot(self.dst)
+        r = dyad(self.dst, "install", str(src2 / "fx.tar.gz"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("installed crafts/fx 0.2.0:", r.stdout)
+        self.assertIn("warn [craft] crafts/fx: seed 't.md' not copied to workstation-corpus/fx-seed.md — copy it by hand: "
+                       "cp crafts/fx/templates/t.md workstation-corpus/fx-seed.md", r.stdout)
+        after = snapshot(self.dst)
+        self.assertEqual({k for k in after if k not in before or after[k] != before[k]},
+                          {f"crafts/fx/{k}" for k in CRAFT} | {"crafts/fx/MANIFEST.md", "crafts/REGISTRY.md"})   # A11: nothing else, seeds included
+        self.assertFalse((self.dst / "workstation-corpus" / "fx-seed.md").exists())   # never written by install
+        (self.dst / "workstation-corpus").mkdir(exist_ok=True); (self.dst / "workstation-corpus" / "fx-seed.md").write_text("seeded by hand\n")
+        r = dyad(self.dst, "install", str(src2 / "fx.tar.gz"))
+        self.assertEqual(r.returncode, 0, r.stderr); self.assertEqual(r.stdout.strip(), "installed crafts/fx 0.2.0: 0 changes")
+        self.assertNotIn("warn [craft]", r.stdout)   # destination now present: no more reminder
+        shutil.rmtree(src2, ignore_errors=True)
+    def test_install_refuses_modified_tree_unless_forced(self):
+        dyad(self.dst, "install", str(self.archive))
+        (self.dst / "crafts/fx/docs/d.md").write_text("# local edit\n"); (self.dst / "crafts/fx/local.md").write_text("mine\n")
+        r = dyad(self.dst, "list"); self.assertIn("(modified)", r.stdout)
+        r = dyad(self.dst, "install", str(self.archive)); self.assertEqual(r.returncode, 1); self.assertIn("locally modified or authored here; `--force` overwrites", r.stderr)
+        self.assertEqual((self.dst / "crafts/fx/docs/d.md").read_text(), "# local edit\n"); self.assertTrue((self.dst / "crafts/fx/local.md").exists())
+        r = dyad(self.dst, "install", str(self.archive), "--force"); self.assertEqual(r.returncode, 0, r.stderr); self.assertEqual(r.stdout.strip(), "installed crafts/fx 0.2.0: 2 changes")   # rewrite + prune (A18)
+        self.assertEqual((self.dst / "crafts/fx/docs/d.md").read_text(), "# d\n"); self.assertFalse((self.dst / "crafts/fx/local.md").exists())
+        r = dyad(self.dst, "list"); self.assertNotIn("(modified)", r.stdout)
+    def test_install_refuses_authored_craft(self):
+        author(self.dst)   # the same name authored here: no registry row
+        r = dyad(self.dst, "install", str(self.archive)); self.assertEqual(r.returncode, 1); self.assertIn("locally modified or authored here", r.stderr)
+    def test_new_version_prunes_dropped_file(self):
+        dyad(self.dst, "install", str(self.archive))
+        v2 = {k: v for k, v in CRAFT.items() if k != "docs/d.md"}; v2["VERSION"] = "0.3.0\n"; v2["docs/e.md"] = "# e\n"
+        src2 = scratch(); author(src2, files=v2)
+        r = dyad(src2, "export", "fx", str(src2 / "fx2.tar.gz")); self.assertEqual(r.returncode, 0, r.stderr)
+        r = dyad(self.dst, "install", str(src2 / "fx2.tar.gz")); self.assertEqual(r.returncode, 0, r.stderr); self.assertEqual(r.stdout.strip(), "installed crafts/fx 0.3.0: 4 changes")   # VERSION, e.md, -d.md, row
+        self.assertFalse((self.dst / "crafts/fx/docs/d.md").exists()); self.assertTrue((self.dst / "crafts/fx/docs/e.md").exists())
+        self.assertIn("| fx | 0.3.0 | fx2.tar.gz |", (self.dst / "crafts/REGISTRY.md").read_text()); shutil.rmtree(src2, ignore_errors=True)
+    def test_requires_refused_at_install_and_met(self):
+        src2 = scratch(); author(src2, files={**CRAFT, "MANIFEST.md": "name: fx\nrequires: zzcraft>=0.2.0 dyad-operator>=0.1.0\n"})
+        r = dyad(src2, "check", "fx"); self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("warn [craft] crafts/fx: requires zzcraft>=0.2.0: not installed (checked at install)", r.stdout)
+        r = dyad(src2, "export", "fx", str(src2 / "fx.tar.gz")); self.assertEqual(r.returncode, 0, r.stderr)
+        before = snapshot(self.dst)
+        r = dyad(self.dst, "install", str(src2 / "fx.tar.gz")); self.assertEqual(r.returncode, 1)
+        self.assertIn("requires zzcraft>=0.2.0: not installed", r.stderr); self.assertIn("requirements unmet", r.stderr); self.assertEqual(snapshot(self.dst), before)   # the refusal wrote nothing at all; crafts/ itself may already hold a bundled craft the core install wrote (Rule-11 p2)
+        author(self.dst, name="zzcraft", files={**CRAFT, "VERSION": "0.2.0\n"})
+        r = dyad(self.dst, "install", str(src2 / "fx.tar.gz")); self.assertEqual(r.returncode, 0, r.stderr); shutil.rmtree(src2, ignore_errors=True)
+    def test_install_from_directory_and_repo_root(self):
+        r = dyad(self.dst, "install", str(self.src / "crafts" / "fx"), "--source", "the-src-repo"); self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("| fx | 0.2.0 | the-src-repo |", (self.dst / "crafts/REGISTRY.md").read_text())
+        r = dyad(self.dst, "install", str(self.src), "--craft", "fx", "--source", "the-src-repo"); self.assertEqual(r.returncode, 0, r.stderr); self.assertEqual(r.stdout.strip(), "installed crafts/fx 0.2.0: 0 changes")
+        r = dyad(self.dst, "install", str(self.src)); self.assertEqual(r.returncode, 2); self.assertIn("needs --craft", r.stderr)
+        r = dyad(self.dst, "install", str(self.src / "nope")); self.assertEqual(r.returncode, 2); self.assertIn("no such source", r.stderr)
+    def test_check_in_receiving_repo_after_install(self):
+        dyad(self.dst, "install", str(self.archive)); git(self.dst, "add", "-A"); git(self.dst, "commit", "-qm", "craft")
+        r = subprocess.run([sys.executable, str(self.dst / "dyad" / "scripts" / "package.py"), "check", "--guards"], capture_output=True, text=True, env=env())
+        n_crafts = 1 + len(dyadlib.runner_module().bundled_crafts())   # fx, plus every bundled craft the core install brought (Rule-11 p2) — 0 on a branch where none declares itself
+        self.assertIn(f"ok   [guards] craft/crafts ({n_crafts} craft(s))", r.stdout); self.assertIn("ok   [guards] fx/w", r.stdout)   # the craft guard and the craft's guard run there
+        self.assertFalse(any("FAIL [guards] craft/" in l or "FAIL [guards] fx/" in l for l in r.stdout.splitlines()), r.stdout)
+        # (the whole run is not asserted: Rules 8, 18, 19 name `crafts/sysadmin/…` paths, which references.py skips only on a core-only install — Rule-20, outside #156)
+
+
+class CoreRowTests(unittest.TestCase):
+    """d-work #199 (#176): the registry's core row, written by `dyad install`, read by the push gate."""
+    def test_core_row_and_unmodified(self):
+        craft = dyadlib.load_module(PKG / "scripts" / "craft.py", "craft")
+        self.assertEqual((craft.craft_root(craft.CORE_NAME), craft.craft_root("fx")), ("dyad", "crafts/fx"))
+        d = scratch()                                               # a real install: the core row is already there
+        row = craft.unmodified(d, craft.CORE_NAME)
+        self.assertIsNotNone(row); self.assertEqual(row["sha256"], craft.tree_sha(d, craft.CORE_NAME))
+        self.assertEqual(craft.record_core(d, row["version"], row["source"]), 0)   # the same row: nothing written
+        self.assertIsNone(craft.unmodified(d, "fx"))                # no row
+        (d / "dyad" / "VERSION").write_text("9.9.9\n")
+        self.assertIsNone(craft.unmodified(d, craft.CORE_NAME))     # a modified tree
+        self.assertEqual(craft.record_core(d, "9.9.9", row["source"]), 1)
+        self.assertIsNotNone(craft.unmodified(d, craft.CORE_NAME))  # re-recorded: unmodified again
+        shutil.rmtree(d, ignore_errors=True)
+
+class BundledRowTests(unittest.TestCase):
+    """d-work #228 (#201): the core install writes every bundled craft's tree (Rule-11 p2), so it must write
+    that craft's registry row too. Without the row, `craft install` of the same craft is refused as authored
+    here (the `locally modified or authored` branch), which is what has failed `dyad-package.yml`'s install
+    step on `main` since 2026-09-25 — the only check Rule-11 property 5 has, since `check --guards` runs no
+    install."""
+    def test_bundled_craft_has_an_unmodified_row_after_a_core_install(self):
+        craft = dyadlib.load_module(PKG / "scripts" / "craft.py", "craft")
+        bundled = dyadlib.runner_module().bundled_crafts()
+        if not bundled:
+            self.skipTest("no craft declares BUNDLED_WITH_CORE on this branch")
+        d = scratch()                                               # a real core install
+        try:
+            same = []
+            for name in bundled:
+                self.assertTrue((d / "crafts" / name).is_dir(), f"{name}: the core install wrote no tree")
+                row = craft.unmodified(d, name)
+                self.assertIsNotNone(row, f"{name}: the core install wrote the tree but no registry row")
+                self.assertEqual(row["sha256"], craft.tree_sha(d, name))
+                same.append((name, row["version"], row["source"]))
+            self.assertEqual(craft.record_install(d, same), 0,
+                             "re-recording the rows the install wrote changed the file (Rule-11 p5 idempotence)")
+            self.assertEqual(craft.record_install(d, [(n, "9.9.9", s) for n, _, s in same]), 1,
+                             "a changed version did not rewrite the registry")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_core_install_does_not_clobber_a_bundled_craft_row_a_craft_install_wrote(self):
+        """The other half of #228: once the row exists, `dyad install` must leave a richer one alone.
+        `dyad craft install` of the same craft writes its archive as `source` and its d-work; if the core
+        install re-asserted its own row every time, the two commands would ping-pong and neither would be
+        `0 changes` — `dyad-package.yml`'s last two greps. Found by running the CI sequence, not by the
+        unit test above, which is why it is pinned here."""
+        bundled = dyadlib.runner_module().bundled_crafts()
+        if not bundled:
+            self.skipTest("no craft declares BUNDLED_WITH_CORE on this branch")
+        name = bundled[0]
+        d = scratch(); arch = d.parent / f"{name}-bundled.tar.gz"
+        try:
+            e = subprocess.run([sys.executable, str(PKG / "scripts" / "package.py"), "craft", "export", name, str(arch)],
+                               capture_output=True, text=True, env=env(), cwd=PKG.parent)
+            self.assertEqual(e.returncode, 0, e.stderr)
+            r = dyad(d, "install", str(arch), "--dwork", "156")      # the step that was refused before #228
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertNotIn("locally modified or authored", r.stderr)
+            again = dyad(d, "install", str(arch))                    # CI greps ' 0 changes'
+            self.assertIn(" 0 changes", again.stdout, again.stdout + again.stderr)
+            core = subprocess.run([sys.executable, str(PKG / "scripts" / "package.py"), "install", str(d)],
+                                  capture_output=True, text=True, env=env(), cwd=PKG.parent)
+            self.assertEqual(core.returncode, 0, core.stderr)
+            self.assertIn(" 0 changes", core.stdout, core.stdout + core.stderr)
+        finally:
+            arch.unlink(missing_ok=True); shutil.rmtree(d, ignore_errors=True)
+
+
+class DiffTests(unittest.TestCase):
+    """`dyad craft diff <craft> --against <src> [--patch]` (d-work #353, A1): the by-path diff of an installed tree
+    against its source — the release archive, the `…/crafts/<name>` directory, the repo root — read from the installed
+    side; the core (`dyad-operator`) against the authoring tree; the `--patch` output applies to the source and
+    reproduces the change (a back-port's patch, dyad/playbooks/port.md); refusals exit 2 and write nothing."""
+    @classmethod
+    def setUpClass(cls):
+        cls.src = scratch(); author(cls.src)
+        r = dyad(cls.src, "export", "fx", str(cls.src / "fx.tar.gz")); assert r.returncode == 0, r.stdout + r.stderr
+        cls.archive = cls.src / "fx.tar.gz"
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.src, ignore_errors=True)
+    def setUp(self):
+        self.dst = scratch(); r = dyad(self.dst, "install", str(self.archive)); self.assertEqual(r.returncode, 0, r.stderr)
+    def tearDown(self):
+        shutil.rmtree(self.dst, ignore_errors=True)
+    def edit(self):
+        (self.dst / "crafts/fx/docs/d.md").write_text("# local edit\n"); (self.dst / "crafts/fx/local.md").write_text("mine\n")
+    def test_unchanged_then_every_kind(self):
+        r = dyad(self.dst, "diff", "fx", "--against", str(self.archive))
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, f"crafts/fx vs {self.archive}: unchanged"), r.stderr)
+        self.edit(); (self.dst / "crafts/fx/templates/t.md").unlink(); git(self.dst, "update-index", "--chmod=+x", "crafts/fx/rules/r.md")
+        r = dyad(self.dst, "diff", "fx", "--against", str(self.archive)); self.assertEqual(r.returncode, 1, r.stderr)
+        lines = r.stdout.splitlines()
+        self.assertEqual(lines[:-1], ["modified crafts/fx/docs/d.md", "added crafts/fx/local.md", "mode crafts/fx/rules/r.md 644->755", "removed crafts/fx/templates/t.md"])
+        self.assertEqual(lines[-1], f"crafts/fx vs {self.archive}: 1 added, 1 removed, 1 modified, 1 mode")
+        self.assertIn("(modified)", dyad(self.dst, "list").stdout)                                   # the registry says so too; the diff says where
+    def test_patch_is_source_to_installed_and_applies(self):
+        self.edit()
+        r = dyad(self.dst, "diff", "fx", "--against", str(self.archive), "--patch"); self.assertEqual(r.returncode, 1, r.stderr)
+        head, patch = r.stdout.split(f"crafts/fx vs {self.archive}: 1 added, 1 modified\n", 1)
+        self.assertEqual(head.splitlines(), ["modified crafts/fx/docs/d.md", "added crafts/fx/local.md"])
+        self.assertIn("--- a/crafts/fx/docs/d.md\n+++ b/crafts/fx/docs/d.md\n", patch); self.assertIn("-# d\n+# local edit\n", patch)
+        self.assertIn("--- /dev/null\n+++ b/crafts/fx/local.md\n", patch); self.assertIn("+mine\n", patch)
+        other = scratch(); author(other)                                                              # the authoring tree at the source's version
+        pf = other / "fx.patch"; pf.write_text(patch)
+        git(other, "apply", str(pf))
+        self.assertEqual((other / "crafts/fx/docs/d.md").read_text(), "# local edit\n"); self.assertEqual((other / "crafts/fx/local.md").read_text(), "mine\n")
+        shutil.rmtree(other, ignore_errors=True)
+        r = dyad(self.dst, "diff", "fx", "--against", str(self.archive)); self.assertNotIn("---", r.stdout)   # no --patch: no patch
+    def test_against_directory_repo_root_and_the_core(self):
+        for src in (self.src / "crafts" / "fx", self.src):
+            r = dyad(self.dst, "diff", "fx", "--against", str(src)); self.assertEqual((r.returncode, r.stdout.strip()), (0, f"crafts/fx vs {src}: unchanged"), r.stderr)
+        r = dyad(self.dst, "diff", "dyad-operator", "--against", str(PKG.parent))                        # the scratch core is this tree's install
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, f"dyad vs {PKG.parent}: unchanged"), r.stderr)
+        (self.dst / "dyad" / "VERSION").write_text("9.9.9\n")
+        r = dyad(self.dst, "diff", "dyad-operator", "--against", str(PKG.parent)); self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.stdout.splitlines(), ["modified dyad/VERSION", f"dyad vs {PKG.parent}: 1 modified"])
+    def test_refusals(self):
+        before = snapshot(self.dst)
+        r = dyad(self.dst, "diff", "fx"); self.assertEqual(r.returncode, 2); self.assertIn("usage: dyad craft diff", r.stderr)
+        r = dyad(self.dst, "diff", "fx", "--against"); self.assertEqual(r.returncode, 2)
+        r = dyad(self.dst, "diff", "nope", "--against", str(self.archive)); self.assertEqual(r.returncode, 2); self.assertIn("no crafts/nope/ here", r.stderr)
+        r = dyad(self.dst, "diff", "fx", "--against", str(self.src / "missing")); self.assertEqual(r.returncode, 2); self.assertIn("no such source", r.stderr)
+        r = dyad(self.dst, "diff", "fx", "--against", str(self.src / "dyad")); self.assertEqual(r.returncode, 2); self.assertIn("holds no crafts/fx/", r.stderr)
+        self.assertEqual(snapshot(self.dst), before)
+
+class SourceNameTests(unittest.TestCase):
+    """`distribute.source_name` (d-work #353, A2) and the registry `source` an install records with it: an archive by
+    file name; a git tree `<dir>@<tag>` at an exact tag, else `<dir>@<sha12>`; any other directory by name; stable, so
+    a second install is still 0 changes."""
+    def test_shapes(self):
+        distribute = dyadlib.load_module(PKG / "scripts" / "distribute.py", "distribute")
+        d = scratch(); author(d)
+        sha = subprocess.check_output(["git", "-C", str(d), "rev-parse", "--short=12", "HEAD"], text=True).strip()
+        self.assertEqual(distribute.source_name(d), f"{d.name}@{sha}")
+        git(d, "tag", "fx-v0.2.0"); self.assertEqual(distribute.source_name(d), f"{d.name}@fx-v0.2.0")
+        self.assertEqual(distribute.source_name(d / "crafts" / "fx"), "fx")                            # a subdirectory is not the work tree
+        (d / "fx-0.2.0.tar.gz").write_bytes(b""); self.assertEqual(distribute.source_name(d / "fx-0.2.0.tar.gz"), "fx-0.2.0.tar.gz")
+        plain = Path(SCRATCH.mkdtemp()); self.assertEqual(distribute.source_name(plain), plain.name)
+        shutil.rmtree(d, ignore_errors=True)
+    def test_install_records_the_source_it_was_given(self):
+        src = scratch(); author(src); git(src, "tag", "fx-v0.2.0"); dst = scratch()
+        r = dyad(dst, "install", str(src), "--craft", "fx"); self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(f"| fx | 0.2.0 | {src.name}@fx-v0.2.0 |", (dst / "crafts/REGISTRY.md").read_text())
+        r = dyad(dst, "install", str(src), "--craft", "fx"); self.assertEqual(r.stdout.strip(), "installed crafts/fx 0.2.0: 0 changes")
+        r = dyad(dst, "install", str(src), "--craft", "fx", "--source", "named"); self.assertIn("| fx | 0.2.0 | named |", (dst / "crafts/REGISTRY.md").read_text())   # --source still overrides
+        shutil.rmtree(src, ignore_errors=True); shutil.rmtree(dst, ignore_errors=True)
+
+if __name__ == "__main__":
+    unittest.main()

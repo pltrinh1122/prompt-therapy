@@ -1,0 +1,157 @@
+# Rule-7: provenance
+
+**Intent:** Preserve verbatim, in the corpus, every operator prompt and disposition a d-work is
+built on.
+**Target:** a provenance record
+
+## Boundaries (out of scope)
+- The chain of authorization as *data* — Rule-3: the row's `disposed` column records that a
+  disposition was given and of what kind. Rule-7 records the words it was given in, and nothing
+  else; the row keeps owning the chain, and Rule-7 is checked against it.
+- What a prompt authorizes, when a d-work opens or closes, and the counter-prompt forms — Rule-3;
+  who may dispose — Rule-2. Rule-7 stores; it never disposes and never gates.
+- The agent's own words: a plan is the plan file (Rule-15), a verdict is a falsification record
+  (Rule-9), a departure is an incident row (Rule-3). None is a provenance record.
+- The raw session transcript the harness writes (`~/.claude/.../*.jsonl` for one kernel, nothing
+  at all for another): never a corpus file (property 2). Copying one elsewhere on the machine is a
+  host action — Rule-8 classes it, Rule-7 neither requires nor forbids it.
+- The per-machine memory cache — the frame convention; it summarises ratified corpus and is not
+  provenance.
+- Where the store's guard lives and what it declares — Rule-11 property 1 and the sysarch craft's
+  `crafts/sysarch/rules/guards.md`; the reference from a record to its row — Rule-20; zones —
+  Rule-1 (the store is agent zone).
+
+## Conditions (triggers)
+- An operator prompt opens or is received on a d-work: its text is written as an entry, then.
+- The operator disposes a counter-prompt: the disposition's text is written as an entry, then,
+  in the same clerical commit that records it in the row (Rule-3).
+- Every push and PR: `dyad/guards/agent/provenance.py` runs through `package.py check`
+  (`agent/provenance`) and on the kernel-only path (`check --guards`, Rule-14 property 3), where it
+  also judges the commits being pushed as a transaction guard (Enforcement).
+- A `*.jsonl` is about to be tracked under the d-work store: forbidden (property 2).
+
+## Properties
+1. **One record per d-work.** The provenance store is `<instance>/d-work/provenance/`; a record is
+   `<instance>/d-work/provenance/<id>.md`, one file per id, beside the
+   row and the plan file and collision-free in the same way (Rule-16). It opens with
+   `# Provenance #<id>`, may carry `session:` and `raw transcript:` lines, and holds entries:
+
+       ## <n> <kind> <YYYY-MM-DD>[ <note>]
+
+   numbered from 1 without gaps, the date the UTC date of the write (#592), `kind` either `prompt` or `disposition`,
+   each followed by a fenced
+   block holding the text exactly as the operator gave it. The fence is what makes the text data:
+   a prompt containing a heading, a pipe or a backtick cannot reshape the file that stores it.
+2. **The raw transcript is never committed.** It carries whatever the session carried, credentials
+   included; it is megabytes per session, permanent once pushed; and its location is a property of
+   one kernel and one host, not of the dyad (Rule-14 property 2). The agent therefore writes the
+   entry from the prompt it received, and never reads a harness file to do it. What reads a transcript on the
+   machine — the d-work trace (Rule-3) — writes none of its text: an entry it cannot match word for word is named
+   under its Limits as `not verbatim` by its number and kind alone (#592).
+3. **Written when it happens, never gathered later.** An entry is appended in the clerical commit
+   of the event it records (Rule-3: the store is under `<instance>/d-work/`, so the fence already
+   admits it). No session is required to reach its own end, because nothing waits for the end.
+4. **The operator's words only.** A provenance record holds what the operator wrote. The agent's
+   text lives in the plan, the row, the record and the incident log, each already owned. An
+   operator prompt relayed by another agent (Rule-3, Intake) is still an operator's words: entered
+   verbatim as the message carried it, the entry note `relayed via <session>`; the relaying agent's
+   own words are never entered — a defect's observation stays in the plan file (#34). A disposition
+   relayed from the unit it was given in is still the operator's words, and its note gains
+   `relayed via <unit>`, which says where they were given (#422). An **accreted
+   row**'s entry 1 (Rule-3, Scope) is still this operator's words: the plan-`Y` of the mandate the
+   row is accreted under, entered verbatim as the operator gave it to that mandate, the entry note
+   `mandate #<id>, <the mandate's own date>` — the id because the words were given on another row,
+   and the date because the writer stamps the day it writes, so without it the record misdates the
+   operator. The note is what discloses that the words predate the row they open; the agent's own
+   account of why the row exists stays in the mandate's plan file (#290). The same holds of the
+   entry that closes it, the mandate's done-`Y` words under the same note (#422), and of a carried
+   `backlog` row's entry 1 (Rule-3, Ledger), the words of the plan-`Y` whose play-book prescribed it (#574). A row a mandate preference opens from `backlog`
+   (Rule-3, Scope: `hardening-mandate`) gains, as the entry for that transition, the operator's words that granted the
+   preference — the entry the instance's description of the key names as `granted: d-work #<id> entry <n>` — copied
+   verbatim and noted `mandate preference <key>, <the grant's date>`, the date the grant's, for the reason an accreted
+   row's note carries its mandate's date (#692). A row a done-`Y` archives under `retires` (Rule-3,
+   Completion counter-prompt) gains that `Y`'s words the same way, noted `done #<id>, <date>`, so each retired row's
+   record holds the disposition its `disposed` gains (#585). A disposition the operator gives
+   on the hosting rather than in words — the approval of a publishing run under Rule-11's release gate — has no
+   words to copy, so its entry holds the reference instead, noted `by reference`, its fenced body
+   `run <run id> approved by <login> at <ISO-8601 UTC time>` as the hosting reports them. The reference is verifiable on the hosting,
+   which a transcription of a tap could not be; the agent writes nothing of its own into it (#545).
+5. **Checked against the row.** The `disposition` entries of a record correspond one-to-one, in
+   order, with the entries of its row's `disposed` column; a mismatch is a failing check, so a
+   dropped or invented disposition is visible without reading the chat. A row the instance lists as
+   predating enforcement (Enforcement) holds exactly as many fewer as the list says its earlier
+   dispositions were, whose words were never written and which property 3 forbids writing now;
+   every disposition after enforcement is exact.
+
+## Enforcement
+`dyad/guards/agent/provenance.py` (`check_package` and `check_transaction`; agent corpus, placed
+per Rule-11 property 1; tests in `dyad/tests/guards/agent/test_provenance.py`, Rule-12; registered in
+Rule-11's runner as `agent/provenance`). Its two checks are split by what a failure costs (#191):
+- **Transaction**, each non-merge commit being pushed (the range's own history, merge base to head)
+  against its parent, as property 3 binds a commit: a row the commit adds brings at least one new
+  entry in its record — a `disposition` when it is born `backlog`, which only a disposition opens,
+  or a plan-`Y` it carries (Rule-3); a row going `backlog` → `open` brings a `prompt` (Rule-3: the operator prompts for it), or the noted entry of a
+  mandate preference (property 4, #692); a
+  row whose `disposed` gains k entries gains k `disposition` entries; and a record only grows — its
+  earlier entries stay word for word and the file is never deleted, a merge commit's records judged
+  against each of its parents. This check blocks only the push
+  that creates the gap, on the session that wrote it, which is what a concurrent session (Rule-16)
+  that has not loaded this Rule needs. `dyad dwork new|state` write the entries with the row
+  (`--prompt`, `--said`, each also `-file`), make every refusal before the first write, and refuse a
+  row, a disposition or a `backlog` → `open` without its words.
+- **State**, over the store: it fails on a record whose title id differs from its file name;
+  entries not numbered from 1 without gaps; an unknown `kind`; a missing or unterminated fenced
+  body; a `disposition` count that differs from the row's `disposed` count (property 5); a credential
+  shape in any body (property 2's residue: `gh[pousr]_…`, `github_pat_…`, an Anthropic API key `sk-ant-…`, a PEM
+  private-key header, an `Authorization:` bearer or token value); any tracked `*.jsonl` under the d-work store; and a
+  row with no record that the instance does not name in `<instance>/provenance_legacy.local.txt`.
+  That list holds the rows that predate enforcement, one `<id> <n> <reason>` per line, n the
+  dispositions the row held whose words were never written (property 3 forbids writing them now): a
+  listed row's record holds exactly n fewer disposition entries than the row, and a listed row with
+  no record passes only while its `disposed` holds n. A list line of another shape, an id listed
+  twice, a listed id that is no row, or an n above the row's count fails too. With the transaction
+  check in place, a gap reaches the tree only around the hook; it then fails this check in every
+  evidence run and in the automaton sweep, at the next ledger push's stores check (#617), until it is recorded or
+  listed — the alarm for that bypass, a cost the design accepts; the push gate judges only the records a push touches (#564).
+  Naming a row in the list is a decision, made in a reviewed agent-zone PR (the list lies outside
+  `<instance>/d-work/`, so no ledger-only commit can touch it). The list is instance data and never
+  the core's (Rule-11 property 1). It warns on every unrecorded row while an instance keeps no list
+  — a system installing this version, which writes its own — and on a bare 40-hex string, which a
+  commit sha and a Gitea token share.
+Whether an entry is a faithful transcription is inference, as every clerical write is
+(`../../agent-corpus/falsification/e3-plan-gate.md` states it of the `Y plan` entry); property 5's
+count is its mechanical fence, and the operator's own copy of the chat is the other.
+
+## Provenance
+Operator gap, ledger #54 (2026-09-12, deferred) and #55; prompted again and planned as #164
+(2026-09-14). Falsified; see `../falsification/rules/rule-7-provenance.md`. Property 4 gains the
+relayed-prompt sentence 2026-09-16 (d-work #34, Rule-3 Intake). Enforcement split into a
+transaction check that fails the gap where it is born and a state check that fails against the
+instance's legacy list, replacing `SINCE_ID` (an id of an earlier ledger that had come to warn on
+unrelated rows and to exempt rows holding dispositions); property 5 gains the legacy sentence
+2026-09-29 (d-work #191); see the same record, amendment #191. Property 4 gains the mandate
+sentence 2026-10-14 (d-work #290, Rule-3 Scope): a row born under another row's plan-`Y` has to
+hold that `Y`'s words to satisfy property 5, and the 27 rows already carrying an inherited
+authorization carried it in two ad-hoc note forms — #96 and #97 as `Y plan (named in plan 94.md,
+deferred)`, #240, #257 and #262–#284 as `Y backlog (… from #N's plan-Y)` — neither of which
+disclosed the day the operator's words were given, which the writer stamps as today; see the same
+record, amendment #290. Property 4 gains the relayed-disposition sentence and the accreted row's
+closing entry 2026-10-25 (d-work #422): the attendance reading excludes a note naming a mandate or a relay,
+and no CLI form wrote either note on a close or on a relayed disposition, so every mandate close read as a
+disposition given in the closing seat; see the same record, amendment #422. Enforcement's credential shapes read
+`gh[pousr]_` and gain `sk-ant-` 2026-10-29 (d-work #525): the guard had matched `gh[pousr]_` from the start and
+added the Anthropic key in #558, and the Rule named neither; see the same record, amendment #525. Property 4 gains the
+disposition recorded by reference 2026-11-01 (d-work #545): under the release gate the operator's approval of a
+publishing run is a tap with no words; see the same record, amendment #545. Property 4
+says unit for seat and lowercases operator and agent 2026-11-02 (d-work #553); see `../falsification/rules/rule-6-vocabulary.md`, amendment #553 (part D). Enforcement's alarm moves to the evidence run
+and the scheduled sweep 2026-11-03 (d-work #564); see `../falsification/rules/rule-14-system-infrastructure.md`, amendment #564. Property 4 and Enforcement gain the carried `backlog` row 2026-11-04 (d-work #574): a
+row a play-book the plan runs prescribes is born under that plan-`Y`, its words copied as an accreted row's are; see the
+same record, amendment #574. Property 4 gains the retired row's copied entry 2026-11-04 (d-work #585); see
+`../falsification/rules/rule-3-d-work.md`, amendment #585. Property 1's date is UTC, and property 2 names what the
+d-work trace writes of a transcript, 2026-11-05 (d-work #606, stating #592); see `../falsification/rules/rule-3-d-work.md`,
+amendment #606. Enforcement's alarm comes at the next ledger push's
+stores check, in the automaton sweep, in place of a twice-daily scheduled sweep 2026-11-06 (d-work #617); see
+`../falsification/rules/rule-14-system-infrastructure.md`, amendment #617. Property 4 and Enforcement gain the mandate preference's entry 2026-11-12 (d-work #692): a row opened from
+`backlog` under `hardening-mandate` has no prompt of its own; see `../falsification/rules/rule-3-d-work.md`, amendment #692.
+
+Set: System Requirements.

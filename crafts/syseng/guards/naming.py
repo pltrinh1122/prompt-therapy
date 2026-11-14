@@ -1,0 +1,422 @@
+#!/usr/bin/env python3
+"""Naming guard (entity `name`, corpus `craft`; the syseng craft's `rules/naming.md` owns the table; placed per
+crafts/sysarch/rules/guards.md under the craft's root; d-work #162). Kernel: Python 3.12+, git.
+Reads `naming_rules.txt` beside it: `kind: <pattern> = <path glob> = <regex>` — every path the tree holds
+(tracked or not yet committed, `git ls-files -co --exclude-standard`, less any path a `generated:`
+entry of `package_rules.txt` names — Rule-11 property 6; generated is generated whether or not it
+has been committed yet, #213 d-work #46) that the glob selects (`*` one path
+segment, `**` any) matches the regex over the whole path, a named group `id` is unique within the kind, a
+group `beside` names `<dir>/<beside>.py` that exists (fail); `mode: <pattern> = <path glob> = <tracked mode>` —
+every selected path is tracked at that mode in git's index (`dyadlib.tracked_mode`; the bit on disk is not evidence,
+`core.fileMode=false` shows 755 for a file tracked 100644, #135/#141), an untracked one warns and falls back to the
+disk bit; every `kind:` and `mode:` pattern is a row of the table in
+`rules/naming.md` (fail: the data and the table never drift); `symbol: <module glob> : <name|regex> …` — each
+selected module defines each plain name at top level and at least one top-level name per regex (fail);
+`env: NAME …` — the `DYAD_<NAME>` variables package code reads (`dyad/scripts`, `dyad/guards`, every craft's
+`guards/`, `projectors/`, `scripts/`) equal the listed set (fail either way: unlisted or stale); `allow: <path> #
+<reason>` — a path a kind claims but that does not match it: no reason fails, a gone package path (`dyad/`, `crafts/`)
+fails (the list only shrinks), a gone instance path warns (the data travels to installs whose instance differs), a path
+that matches again warns; `upper: <basename glob> …` — the closed uppercase list of `rules/naming.md` (L3): any path
+segment carrying an uppercase letter that no listed glob names warns when the path is already on `origin/main` and
+fails when it is new (L4, #553); every path is unique under casefold (L5, fail); `refuse: <word> = <glob> … # <reason>`
+— the word, standalone, in a selected file fails (`dyad-<word>` and a namespaced `<word>:x` are the other system's
+names; a quoted or backticked mention is no use). Whether a name is apt, and its separators (kebab, snake), are
+inference.
+  naming.py [repo-root]
+"""
+import sys
+if sys.version_info < (3, 12):
+    sys.exit("naming.py: Python 3.12+ required")
+import ast, fnmatch, os, re, subprocess
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "dyad" / "scripts"))   # crafts/syseng/guards/ -> dyad/scripts
+import dyadlib
+
+ENTITY, CORPUS, TRANSACTION = "name", "craft", False
+NAME, OWNER = "naming pattern (table row)", "crafts/syseng/rules/naming.md"
+FIELDS = ("pattern", "names", "owner", "example", "checkable")   # the table's columns, in order
+CRAFT = Path(__file__).resolve().parents[1]
+DATA = Path(__file__).resolve().parent / "naming_rules.txt"
+TABLE = CRAFT / "rules" / "naming.md"
+PACKAGE_ROOTS = ("dyad/", "crafts/")                                   # paths that travel with an install; an allow line for one is stale-fails, for an instance path stale-warns
+CODE_GLOBS = ("dyad/scripts/*.py", "dyad/guards/*/*.py", "crafts/*/guards/*.py", "crafts/*/projectors/*.py", "crafts/*/scripts/*.py")   # where `env:` is scanned
+_ENV = re.compile(r"""environ(?:\.get)?\s*[\[(]\s*["'](DYAD_[A-Z_]+)["']""")
+_TICK = re.compile(r"`([^`]+)`")
+_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+INVARIANTS = [   # crafts/syseng/rules/invariants.md
+    ("fields-are-the-table-columns", lambda: FIELDS == ("pattern", "names", "owner", "example", "checkable")),
+    ("code-globs-select-python", lambda: all(g.endswith(".py") for g in CODE_GLOBS)),
+    ("package-roots-are-craft-trees", lambda: PACKAGE_ROOTS == ("dyad/", "crafts/")),
+]
+
+# ---- data
+def parse_rules(text: str) -> dict[str, list]:
+    """{'kind': [(pattern, glob, regex)], 'mode': [(pattern, glob, tracked mode)], 'symbol': [(glob, [tokens])],
+    'env': [names], 'allow': [(path, reason)]}. Malformed lines are kept under 'bad' with their text."""
+    out = {"kind": [], "mode": [], "symbol": [], "env": [], "allow": [], "upper": [], "refuse": [], "bad": []}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, rest = line.partition(":")
+        key, rest = key.strip(), rest.strip()
+        if key in ("kind", "mode") and rest.count(" = ") >= 2:
+            pattern, glob, value = (x.strip() for x in rest.split(" = ", 2))
+            out[key].append((pattern, glob, value))
+        elif key == "symbol" and " : " in rest:
+            glob, toks = rest.split(" : ", 1)
+            out["symbol"].append((glob.strip(), toks.split()))
+        elif key == "env":
+            out["env"].extend(rest.split())
+        elif key == "allow":
+            path, _, reason = rest.partition("#")
+            out["allow"].append((path.strip(), reason.strip()))
+        elif key == "upper" and rest:
+            out["upper"].extend(rest.split())
+        elif key == "refuse" and " = " in rest and "#" in rest:
+            spec, _, reason = rest.partition("#")
+            word, _, globs = spec.partition(" = ")
+            out["refuse"].append((word.strip(), globs.split(), reason.strip()))
+        else:
+            out["bad"].append(line)
+    return out
+
+def load_rules(path: Path = DATA) -> dict[str, list]:
+    return parse_rules(path.read_text())
+
+def contrib_rules(pkg: Path = dyadlib.PKG) -> list[tuple[str, dict]]:
+    """[(craft name, parsed naming_contrib.txt)] for every installed craft that ships one (d-work
+    #15): the craft-contributed half of the table, kept separate by source so a malformed or stale
+    row is reported naming that craft, never syseng — and never checked against syseng's own table
+    (`check_table`, native only): a contributed pattern is documented in the contributing craft's
+    own rule, not `rules/naming.md`."""
+    out = []
+    for d in dyadlib.craft_dirs(pkg):
+        p = d / "guards" / "naming_contrib.txt"
+        if p.exists():
+            out.append((d.name, load_rules(p)))
+    return out
+
+def table_patterns(table: Path = TABLE) -> set[str]:
+    """Every backticked token of the table's first column (`rules/naming.md`)."""
+    if not table.exists():
+        return set()
+    return {t for _h, rows in dyadlib.tables(table.read_text()) for r in rows if r for t in _TICK.findall(r[0])}
+
+def rows(table: Path = TABLE) -> list[dict[str, str]]:
+    """The table as the entities surface shows it (FIELDS)."""
+    if not table.exists():
+        return []
+    ts = [(h, r) for h, r in dyadlib.tables(table.read_text()) if [c.strip() for c in h] == list(FIELDS)]
+    return [dict(zip(FIELDS, r)) for _h, rs in ts[:1] for r in rs if len(r) == len(FIELDS)]
+
+# ---- selection
+def glob_re(glob: str) -> re.Pattern:
+    """A path glob: `**` spans segments, `*` one segment, `?` one character; anchored over the whole path."""
+    out, i = "", 0
+    while i < len(glob):
+        c = glob[i]
+        if glob.startswith("**", i):
+            out += ".*"; i += 2
+        elif c == "*":
+            out += "[^/]*"; i += 1
+        elif c == "?":
+            out += "[^/]"; i += 1
+        else:
+            out += re.escape(c); i += 1
+    return re.compile(f"^{out}$")
+
+def generated_matches(rel: str, patterns: list[str]) -> str | None:
+    """The first `generated:` pattern (Rule-11 property 6, `package_rules.txt`) matching `rel` — the
+    whole path, any single component, or any suffix starting at a component; else None. The same
+    match shape `package.py`'s own generated-file check uses, reimplemented (a craft guard imports
+    dyadlib, never the core runner script)."""
+    parts = rel.split("/")
+    candidates = [rel] + parts + ["/".join(parts[i:]) for i in range(1, len(parts))]
+    for g in patterns:
+        if any(fnmatch.fnmatch(c, g) for c in candidates):
+            return g
+    return None
+
+def tree_paths(root: Path, pkg: Path = dyadlib.PKG) -> list[str]:
+    """Every path the tree holds: tracked plus untracked-not-ignored (a guard sees a file before its
+    commit) — less any path a `generated:` pattern names (an ops script's output log beside it, #213
+    d-work #46): generated is generated whether or not it has been committed yet."""
+    out = subprocess.check_output(["git", "ls-files", "-co", "--exclude-standard"], cwd=root, text=True).split("\n")
+    patterns = dyadlib.package_rules(pkg, root)["generated"]
+    return sorted({p for p in out if p and not generated_matches(p, patterns)})
+
+def with_host(entries, host: str):
+    """`kind:`/`mode:` entries (pattern, glob, regex|mode) with `<host>` resolved to the host path in the
+    glob and the regex (`dyadlib.host_path`, #175); the pattern — a row of rules/naming.md — is unchanged."""
+    return [(pattern, glob.replace("<host>", host), last.replace("<host>", re.escape(host)) if isinstance(last, str) else last)
+            for pattern, glob, last in entries]
+
+def instance_rel(root: Path) -> str:
+    inst = dyadlib.instance(root)
+    return str(inst.relative_to(root)) if inst.is_relative_to(root) else str(inst)
+
+def top_names(py: Path) -> set[str]:
+    """Module-level names a Python file binds (assignments, defs, classes)."""
+    names = set()
+    for n in ast.parse(py.read_text(errors="ignore"), filename=str(py)).body:
+        if isinstance(n, ast.Assign):
+            names |= {t.id for tg in n.targets for t in (tg.elts if isinstance(tg, ast.Tuple) else [tg]) if isinstance(t, ast.Name)}
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name):
+            names.add(n.target.id)
+        elif isinstance(n, (ast.FunctionDef, ast.ClassDef)):
+            names.add(n.name)
+    return names
+
+# ---- checks
+def _compile_kinds(kinds, inst: str):
+    return [(pattern, regex, glob_re(glob.replace("<instance>", inst)), re.compile("^" + regex.replace("<instance>", re.escape(inst)) + "$"))
+            for pattern, glob, regex in kinds]
+
+def check_kinds(paths: list[str], native, contrib, allow: dict[str, str], inst: str, root: Path) -> tuple[list[str], set[str]]:
+    """(messages, paths an allow line covered). Native kinds stay conjunctive among themselves — a
+    narrow native pattern still sharpens a broader native one, unchanged (attack: an early
+    disjunctive-among-everyone draft let the repo's own broad `crafts/<craft>/` catch-all silently
+    validate anything a narrower native `<receiver>_contrib.txt` kind specifically rejected).
+    A contributed kind *rescues* a path only when the selecting native kinds do not all accept it —
+    a craft may widen a native shape without a per-path `allow:` line for every case (D4, #100: the
+    merge already read as "a path is valid if some kind accepts it"; the checking loop required
+    every matching kind, native and contributed alike, to agree, so a widening `kind:` contribution
+    parsed but was inert). A path only contributed kinds select (no native kind touches it) needs
+    every one of those to accept, mirroring how a native-only path is judged. id-uniqueness and a
+    `beside` group are checked only for the kinds that actually validated a given path. Fails only
+    when nothing validates the path and no allow line covers it, naming every pattern tried."""
+    native_c, contrib_c = _compile_kinds(native, inst), _compile_kinds(contrib, inst)
+    msgs, used = [], set()
+    ids: dict[str, dict[str, str]] = {}
+    for p in paths:
+        sel_native = [(pattern, regex, rx.match(p)) for pattern, regex, sel, rx in native_c if sel.match(p)]
+        sel_contrib = [(pattern, regex, rx.match(p)) for pattern, regex, sel, rx in contrib_c if sel.match(p)]
+        if not sel_native and not sel_contrib:
+            continue
+        if sel_native:
+            valid = all(m for _p, _r, m in sel_native)
+            accepted = sel_native if valid else sel_contrib
+            if not valid and any(m for _p, _r, m in sel_contrib):
+                valid = True
+        else:
+            valid = all(m for _p, _r, m in sel_contrib)
+            accepted = sel_contrib
+        if not valid:
+            if p in allow:
+                used.add(p)
+            else:
+                tried = ", ".join(f"`{pattern}` ({regex})" for pattern, regex, _m in sel_native + sel_contrib)
+                msgs.append(f"{p}: does not match {tried}")
+            continue
+        for pattern, _regex, m in accepted:
+            if not m:
+                continue
+            gd = m.groupdict()
+            if gd.get("id") is not None:
+                d = ids.setdefault(pattern, {})
+                if gd["id"] in d:
+                    msgs.append(f"{p}: id {gd['id']!r} already used by {d[gd['id']]} (`{pattern}`)")
+                d.setdefault(gd["id"], p)
+            if gd.get("beside") is not None and not (root / Path(p).parent / f"{gd['beside']}.py").exists():
+                msgs.append(f"{p}: no {Path(p).parent}/{gd['beside']}.py beside it (`{pattern}`)")
+    return msgs, used
+
+def check_table(kinds, patterns: set[str], label: str = "kind") -> list[str]:
+    return [f"naming_rules.txt: {label} `{pattern}` is not a row of rules/naming.md" for pattern, _g, _r in kinds if pattern not in patterns]
+
+def check_modes(paths: list[str], modes, root: Path, inst: str) -> list[str]:
+    """Every path a `mode:` glob selects is tracked at the stated mode. The mode git records, never
+    `os.access(p, os.X_OK)`: on a checkout with `core.fileMode=false` (NTFS) every file reads 755 on
+    disk whatever the index holds, which shipped an entrypoint tracked 100644 that could not exec and
+    passed three ops scripts (#135, #141). A path not yet in the index warns and falls back to the disk
+    bit, so a file added in this working tree is judged before its commit."""
+    msgs = []
+    for pattern, glob, mode in modes:
+        sel = glob_re(glob.replace("<instance>", inst))
+        for p in (q for q in paths if sel.match(q)):
+            tracked = dyadlib.tracked_mode(root, p)
+            if tracked is None:
+                msgs.append(f"warning: {p}: untracked: disk mode used (`{pattern}` wants {mode})")
+                if mode == dyadlib.MODE_EXEC and not os.access(root / p, os.X_OK):
+                    msgs.append(f"{p}: not executable on disk and not tracked (`{pattern}` wants {mode})")
+            elif tracked != mode:
+                hint = " (git update-index --chmod=+x)" if mode == dyadlib.MODE_EXEC else ""
+                msgs.append(f"{p}: tracked mode {tracked}, not {mode} (`{pattern}`){hint}")
+    return msgs
+
+def check_symbols(paths: list[str], symbols, root: Path) -> list[str]:
+    msgs = []
+    for glob, toks in symbols:
+        sel = glob_re(glob)
+        for p in (q for q in paths if sel.match(q) and q.endswith(".py") and not Path(q).name.startswith("_")):
+            names = top_names(root / p)
+            for t in toks:
+                if _IDENT.match(t):
+                    if t not in names:
+                        msgs.append(f"{p}: defines no top-level `{t}` (symbol rule {glob})")
+                elif not any(re.fullmatch(t, n) for n in names):
+                    msgs.append(f"{p}: no top-level name matches /{t}/ (symbol rule {glob})")
+    return msgs
+
+def env_names(paths: list[str], root: Path) -> dict[str, list[str]]:
+    """{DYAD_<NAME>: [file, …]} read by package code."""
+    found: dict[str, list[str]] = {}
+    sels = [glob_re(g) for g in CODE_GLOBS]
+    for p in paths:
+        if any(s.match(p) for s in sels):
+            for name in _ENV.findall((root / p).read_text(errors="ignore")):
+                found.setdefault(name, []).append(p)
+    return found
+
+def env_scope(listed: list[str], installed: set[str] | None = None) -> tuple[list[str], list[str]]:
+    """Split `env:` tokens into (checked, deferred). A token `NAME@<craft>` is read by that craft's code
+    and is checked only when the craft is installed (#1 of dyad-system: the core's data names sysadmin's
+    `DYAD_OPS`; a system without sysadmin must not call it stale). `installed=None` checks everything."""
+    checked, deferred = [], []
+    for tok in listed:
+        name, _, craft = tok.partition("@")
+        if craft and installed is not None and craft not in installed:
+            deferred.append(name)
+        else:
+            checked.append(name)
+    return checked, deferred
+
+def check_env(found: dict[str, list[str]], listed: list[str], installed: set[str] | None = None,
+              label: str = "naming_rules.txt", all_listed: list[str] | None = None, check_unlisted: bool = True) -> list[str]:
+    """`all_listed`, when given, scopes the *unlisted* check (a var read but declared nowhere) to the
+    union of every source's tokens; `listed`/`label` always scope the stale and deferred-warn
+    messages to just this one source, so a contributed file's own stale entry names that craft,
+    never syseng (d-work #15). `check_unlisted=False` skips the first check entirely — for every
+    source after the first merged into one `check_package` call, so the same union is not reported
+    once per source. Both default to today's single-source behaviour, unchanged."""
+    names, deferred = env_scope(listed, installed)
+    msgs = []
+    if check_unlisted:
+        unames, udeferred = env_scope(listed if all_listed is None else all_listed, installed)
+        msgs += [f"{', '.join(sorted(set(ws)))}: reads {n}, not in the naming table (`DYAD_<NAME>` row / `env:` line)" for n, ws in sorted(found.items()) if n not in unames and n not in udeferred]
+    msgs += [f"{label}: env {n} is listed but no package code reads it (stale)" for n in names if n not in found]
+    msgs += [f"warning: {label}: env {n} is read by a craft not installed here; not checked" for n in deferred]
+    return msgs
+
+def check_allow(allow: list[tuple[str, str]], paths: set[str], used: set[str], label: str = "naming_rules.txt") -> list[str]:
+    msgs = []
+    for path, reason in allow:
+        if not reason:
+            msgs.append(f"{label}: allow {path} has no reason")
+        if path not in paths:
+            if path.startswith(PACKAGE_ROOTS):
+                msgs.append(f"{label}: allow {path} is stale (no such path); remove the line")
+            else:   # an instance path differs per install; the craft's data travels, so absence warns here and fails only where the path is package
+                msgs.append(f"warning: {label}: allow {path} names no path of this tree (an instance path; remove the line if it is gone for good)")
+        elif path not in used:
+            msgs.append(f"warning: {label}: allow {path} is no longer needed (the path matches its pattern)")
+    return msgs
+
+def base_paths(root: Path, base: str = "origin/main") -> set[str] | None:
+    """The paths `base` holds, or None when it does not resolve here (then nothing counts as new)."""
+    r = subprocess.run(["git", "ls-tree", "-r", "--name-only", base], cwd=root, capture_output=True, text=True,
+                       env=dyadlib.git_env())
+    return set(r.stdout.split("\n")) - {""} if r.returncode == 0 else None
+
+def check_case(paths: list[str], upper: list[str], base: set[str] | None) -> list[str]:
+    """L4 (#553): a path segment with an uppercase letter is on the closed list (`upper:` basename globs) or it is
+    outside the standard — a warning for a path `base` already holds, a failure for a new one."""
+    msgs = []
+    for p in paths:
+        odd = [seg for seg in p.split("/") if seg != seg.lower() and not any(fnmatch.fnmatchcase(seg, g) for g in upper)]
+        if odd:
+            new = base is not None and p not in base
+            msgs.append(f"{'' if new else 'warning: '}{p}: {odd[0]!r} is not lowercase and not on the closed uppercase list "
+                        f"(rules/naming.md L4{'; a new name' if new else '; an existing name, kept'})")
+    return msgs
+
+def check_casefold(paths: list[str]) -> list[str]:
+    """L5 (#553): no two paths differ only by case; a case-insensitive filesystem would merge them."""
+    seen: dict[str, str] = {}
+    msgs = []
+    for p in paths:
+        k = p.casefold()
+        if k in seen:
+            msgs.append(f"{p}: differs from {seen[k]} only by case (rules/naming.md L5)")
+        seen.setdefault(k, p)
+    return msgs
+
+def refused_re(word: str) -> re.Pattern:
+    """The word as a standalone use: not inside a longer name (`dyad-bond`), not a namespace (`bond:x`), not quoted."""
+    return re.compile(rf"(?<![\w\"'`-]){re.escape(word)}(?![\w\"'`:-])", re.IGNORECASE)
+
+def check_refused(paths: list[str], refuse, root: Path) -> list[str]:
+    msgs = []
+    for word, globs, reason in refuse:
+        rx, sels = refused_re(word), [glob_re(g) for g in globs]
+        for p in (q for q in paths if any(s.match(q) for s in sels)):
+            for n, line in enumerate((root / p).read_text(errors="ignore").splitlines(), 1):
+                if rx.search(line):
+                    msgs.append(f"{p}:{n}: the term {word!r} is refused here ({reason})")
+    return msgs
+
+def check_package(root: Path | None = None, pkg: Path = dyadlib.PKG, data: Path = DATA, table: Path = TABLE) -> list[str]:
+    root = Path(root or dyadlib.repo_root())
+    r = load_rules(data)
+    contrib = contrib_rules(pkg)   # d-work #15: every installed craft's own naming_contrib.txt, if it ships one
+    msgs = [f"naming_rules.txt: malformed line {l!r}" for l in r["bad"]]
+    for craft, cr in contrib:
+        msgs += [f"crafts/{craft}/guards/naming_contrib.txt: malformed line {l!r}" for l in cr["bad"]]
+    paths = tree_paths(root, pkg)
+    allow = dict(r["allow"])
+    for _craft, cr in contrib:
+        allow |= dict(cr["allow"])
+    inst, host = instance_rel(root), dyadlib.host_path(root)
+    contrib_kinds = with_host([k for _c, cr in contrib for k in cr["kind"]], host)
+    all_modes = with_host(r["mode"] + [k for _c, cr in contrib for k in cr["mode"]], host)
+    all_symbols = r["symbol"] + [s for _c, cr in contrib for s in cr["symbol"]]
+    m, used = check_kinds(paths, with_host(r["kind"], host), contrib_kinds, allow, inst, root)
+    pats = table_patterns(table)
+    # check_table stays native-only (F3, plan #15): a contributed pattern's table row lives in the
+    # contributing craft's own rule, not rules/naming.md
+    msgs += m + check_table(r["kind"], pats) + check_table(r["mode"], pats, "mode") + check_symbols(paths, all_symbols, root)
+    msgs += check_modes(paths, all_modes, root, inst)
+    installed = {d.name for d in dyadlib.craft_dirs(pkg)}
+    all_env = r["env"] + [e for _c, cr in contrib for e in cr["env"]]
+    found = env_names(paths, root)
+    msgs += check_env(found, r["env"], installed, all_listed=all_env)
+    msgs += check_allow(r["allow"], set(paths), used)
+    if r["upper"]:   # the case standard is checked where the data declares its closed list (#553)
+        msgs += check_case(paths, r["upper"], base_paths(root))
+    msgs += check_casefold(paths) + check_refused(paths, r["refuse"], root)
+    for craft, cr in contrib:
+        label = f"crafts/{craft}/guards/naming_contrib.txt"
+        msgs += check_env(found, cr["env"], installed, label=label, check_unlisted=False)   # the unlisted check already ran above; this call is stale/deferred only
+        msgs += check_allow(cr["allow"], set(paths), used, label=label)
+    return msgs
+
+def summary(root: Path | None = None, pkg: Path = dyadlib.PKG) -> str:
+    r = load_rules()
+    return f"{len(rows())} patterns, {len(r['kind'])} kinds, {len(r['mode'])} mode rules, {len(r['symbol'])} symbol rules, {len(r['allow'])} allowed"
+
+def describe(root: Path, pkg: Path = dyadlib.PKG) -> dict:
+    rs = rows(); ex = rs[0] if rs else {}
+    meaning = {"pattern": "the shape, `<…>` for a variable part", "names": "the kind of thing the pattern names", "owner": "the core Rule or craft rule that owns it",
+               "example": "one name in the tree", "checkable": "`yes` (a `kind:`/`mode:`/`symbol:`/`env:` line of naming_rules.txt) or `no` (inference or another guard)"}
+    return {"store": "crafts/syseng/rules/naming.md (the table); crafts/syseng/guards/naming_rules.txt (its checkable half)", "parser": "`naming.rows` / `naming.parse_rules`",
+            "observed": len(rs), "note": "one owner per pattern; every kind and mode line is a table row; a mode is the tracked one; allow lines carry a reason and only shrink",
+            "fields": [(f, "text", meaning[f], True, ex.get(f, ""), "naming.FIELDS") for f in FIELDS]}
+
+def main(argv=None) -> int:
+    a = argv if argv is not None else sys.argv[1:]
+    root = Path(a[0]).resolve() if a else dyadlib.repo_root()
+    msgs = check_package(root)
+    fails = [m for m in msgs if not m.startswith("warning:")]
+    for m in msgs:
+        if m.startswith("warning:"):
+            print(f"warn [naming] {m.removeprefix('warning:').strip()}")
+        else:
+            print(f"FAIL [naming] {m}", file=sys.stderr)
+    if not fails:
+        print(f"ok   [naming] {summary(root)}")
+    return 1 if fails else 0
+
+if __name__ == "__main__":
+    sys.exit(main())

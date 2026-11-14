@@ -1,0 +1,338 @@
+#!/usr/bin/env python3
+"""Tended-craft CLI (Rule-11 property 5, #156): `dyad craft <verb>`, dispatched by package.py. One distribution
+code path with the core craft's build/install: scripts/distribute.py. Kernel: Python 3.12+.
+
+  dyad craft new <name>                    scaffold crafts/<name>/ (VERSION 0.1.0, README, rules/, vocabulary/CRAFT.md,
+                                           templates/, guards/, docs/, falsification/rules/) so `dyad craft check <name>`
+                                           passes; refuses an existing directory (the craft play-book's first step, #165)
+  dyad craft list                          every crafts/<craft>/ with its VERSION and origin — `authored`
+                                           (no registry row) or `installed <sha256[:8]>` — and the core craft
+  dyad craft check [<craft>]               the craft guard (guards/craft/crafts.py) for one or every craft
+  dyad craft export <craft> [out.tar.gz]   deterministic archive of crafts/<craft>/ (entries `crafts/<craft>/…`),
+                                           default <craft>-<version>.tar.gz; a failing craft is not exported
+  dyad craft install <src> [--force] [--dwork N] [--craft <name>] [--source <text>]
+                                           <src>: an archive, a `…/crafts/<name>` directory, or a repo root with
+                                           --craft. Checks the source craft, its `requires:`, and refuses a
+                                           locally modified or authored tree unless --force; then installs
+                                           (prune: the tree is the craft's) and writes its crafts/REGISTRY.md row.
+                                           Writes nothing else: no hooks, no import line, no git config. If the
+                                           installed craft's MANIFEST.md declares `seeds:` (#180) and a seed's
+                                           destination is absent, prints a reminder naming the `cp` to run by
+                                           hand — advisory only, never copied (Rule-11 p2: host-side hooks are
+                                           the core craft's only). The row's `source`, unless --source names it,
+                                           is what the archive or tree was: `<file>.tar.gz`, `<dir>@<tag>` for a
+                                           clone at an exact tag, `<dir>@<sha12>` otherwise (#353).
+  dyad craft diff <craft> --against <src> [--patch]
+                                           the by-path diff of an installed tree — crafts/<craft>/, or dyad/ when
+                                           <craft> is `dyad-operator` — against a source: a release archive or a
+                                           tree (an authoring clone at its tag, a `…/crafts/<name>` directory).
+                                           One line per path, `added | removed | modified | mode`, read from the
+                                           installed side (added = here, not in the source), then a summary;
+                                           --patch appends a unified diff of the text files, source -> installed,
+                                           which is a back-port's patch (the port play-book,
+                                           dyad/playbooks/port.md; #353). Exit 0 unchanged, 1 differing, 2 refused.
+"""
+import difflib, filecmp, re, shutil, sys, tempfile
+from pathlib import Path
+PKG = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PKG / "scripts"))
+import dyadlib, distribute
+
+REGISTRY = "crafts/REGISTRY.md"
+REGISTRY_FIELDS = ("craft", "version", "source", "sha256", "d-work")
+REGISTRY_HEAD = ("# Craft registry (instance state in the craft zone, Rule-11 property 2; #156)\n\n"
+                 "One row per *installed* craft, never written by hand: a Tended craft's by `dyad craft install`, the core\n"
+                 "craft's (`dyad-operator`, tree `dyad/`) by `dyad install` (#199). A craft authored in this system has no row\n"
+                 "(`dyad craft list` shows it as `authored`). `sha256` is `distribute.archive_sha256` of the installed tree —\n"
+                 "the proof it is unmodified, and what lets the push gate skip its test root (Rule-12 property 2); `source` is\n"
+                 "where the archive came from (a `world` reference); `d-work` the installing d-work. No date: a second install\n"
+                 "of the same version changes nothing.\n\n"
+                 "| craft | version | source | sha256 | d-work |\n|-------|---------|--------|--------|--------|\n")
+
+INVARIANTS = [("registry-fields-distinct", lambda: len(set(REGISTRY_FIELDS)) == len(REGISTRY_FIELDS)),
+              ("registry-head-names-fields", lambda: REGISTRY_HEAD.rstrip().splitlines()[-2] == "| " + " | ".join(REGISTRY_FIELDS) + " |")]   # crafts/syseng/rules/invariants.md: pure, enforced at import
+TREE_INVARIANTS = [("core-name-is-the-guards", lambda: CORE_NAME == guard().CORE_NAME)]   # loads the craft guard: the pass only (#203)
+
+def guard():
+    return dyadlib.load_guard("craft", "crafts", PKG)
+
+def registry_rows(repo: Path) -> dict[str, dict[str, str]]:
+    f = Path(repo) / REGISTRY
+    if not f.exists():
+        return {}
+    ts = dyadlib.tables(f.read_text())
+    if not ts or tuple(ts[0][0]) != REGISTRY_FIELDS:
+        return {}
+    return {r[0]: dict(zip(REGISTRY_FIELDS, r)) for r in ts[0][1] if len(r) == len(REGISTRY_FIELDS)}
+
+def write_registry(repo: Path, rows: dict[str, dict[str, str]]) -> None:
+    body = "".join("| " + " | ".join(r[k] for k in REGISTRY_FIELDS) + " |\n" for _, r in sorted(rows.items()))
+    (Path(repo) / REGISTRY).write_text(REGISTRY_HEAD + body)
+
+CORE_NAME, CORE_ROOT = "dyad-operator", "dyad"   # the core craft's registry name (guards/craft/crafts.py CORE_NAME) and tree (package.py CORE_ROOTS)
+
+def craft_root(name: str) -> str:
+    """The repo-relative tree a registry row names: `dyad` for the core craft, else `crafts/<name>`."""
+    return CORE_ROOT if name == CORE_NAME else f"crafts/{name}"
+
+def tree_sha(repo: Path, name: str) -> str:
+    """The identity of the tree on disk (tracked or not: an install is not yet committed)."""
+    return distribute.archive_sha256(repo, [craft_root(name)], tracked=False)
+
+def unmodified(repo: Path, name: str, rows: dict | None = None) -> dict[str, str] | None:
+    """`name`'s registry row when its tree on disk hashes to the row's sha256 — installed and unmodified —
+    else None: no row (authored here, or never installed), no tree, or a different hash (modified since)."""
+    row = (registry_rows(repo) if rows is None else rows).get(name)
+    if row is None or not (Path(repo) / craft_root(name)).is_dir():
+        return None
+    return row if row["sha256"] == tree_sha(repo, name) else None
+
+def record_install(repo: Path, entries: list[tuple[str, str, str]]) -> int:
+    """`dyad install`'s registry rows, one per tree it wrote: the core craft and every bundled craft
+    (Rule-11 property 2, d-work #199 for the core, #228 for the bundled case). Each row is the one
+    `cmd_install` writes for a craft installed on its own, its sha256 the tree as installed
+    (`tree_sha`, the same computation). The whole registry is written once, and only when some row
+    differs, so a second install of the same source is 0 changes (property 5 idempotence). Returns
+    the files written (0 or 1).
+
+    Without a bundled craft's row, `cmd_install` below reads its tree as locally authored and refuses
+    `craft install` of that same craft — the downstream core-then-craft upgrade path, and the install
+    step of `dyad-package.yml`, which is the only check property 5 has (`check --guards` runs no
+    install). Red on `main` from 2026-09-25 until #228."""
+    rows = registry_rows(repo)
+    changed = False
+    for name, version, source in entries:
+        new = {"craft": name, "version": version, "source": source, "sha256": tree_sha(repo, name),
+               "d-work": rows.get(name, {}).get("d-work", "")}
+        if rows.get(name) != new:
+            rows[name] = new; changed = True
+    if not changed:
+        return 0
+    (Path(repo) / REGISTRY).parent.mkdir(parents=True, exist_ok=True)
+    write_registry(repo, rows)
+    return 1
+
+def record_core(repo: Path, version: str, source: str) -> int:
+    """The core craft's row alone (d-work #199), through the one writer above."""
+    return record_install(repo, [(CORE_NAME, version, source)])
+
+def cmd_list(repo: Path) -> int:
+    g = guard(); rows = registry_rows(repo)
+    core = (repo / "dyad" / "VERSION")
+    print(f"{'craft':<16} {'version':<10} origin")
+    if core.exists():
+        print(f"{g.CORE_NAME:<16} {core.read_text().strip():<10} core (dyad/)")
+    for d in g.crafts(repo):
+        row = rows.get(d.name)
+        origin = f"installed {row['sha256'][:8]}" + ("" if row["sha256"] == tree_sha(repo, d.name) else " (modified)") if row else "authored"
+        print(f"{d.name:<16} {g.version(d) or '?':<10} {origin}")
+    return 0
+
+CLI_FLAGS = dyadlib.cli_forms("craft")   # #592 R-a: {verb: its dyadlib.CLI form}, the one home of the flags this parser reads
+SCAFFOLD_VERSION = "0.1.0"
+_NAME = re.compile(r"^[a-z][a-z0-9-]*$")
+
+def scaffold(name: str) -> dict[str, str]:
+    """The files of a new craft (relative to crafts/<name>/): the shape guards/craft/crafts.py checks, each directory
+    holding a README so git tracks it. Every file is package text (no instance state, Rule-11 p1)."""
+    h = f"crafts/{name}/"
+    return {
+        "VERSION": f"{SCAFFOLD_VERSION}\n",
+        "README.md": f"# {name} — a Tended craft (`{h}`, zone `craft`)\n\nWhat this craft practises, in one paragraph. Scaffolded by `dyad craft new {name}` "
+                     f"(the craft play-book, `dyad/playbooks/craft-instantiation.md`); version `VERSION` ({SCAFFOLD_VERSION}).\n\n"
+                     "| path | holds |\n|------|-------|\n| `rules/` | the craft's Tended Rules (any form; no Rule-4 block) and their index `README.md` |\n"
+                     "| `vocabulary/CRAFT.md` | the craft's terms (`term | definition | rule`; never an Agent term) |\n| `templates/` | seeds the craft's commands copy into an instance |\n"
+                     "| `guards/` | `<entity>.py` guards meeting the contract (`dyad check --list` shows them as `" + name + "/<entity>`) |\n"
+                     "| `docs/` | generic procedures (no host values) |\n| `falsification/rules/` | one record per craft rule |\n",
+        "rules/README.md": f"# Tended Rules of the {name} craft\n\nOne file per rule, any form; each opens with the core Rule whose kernel reads it, if any.\n\n| rule | read by | what it holds |\n|------|---------|---------------|\n",
+        "vocabulary/CRAFT.md": f"# {name} craft vocabulary (Tended terms)\n\nOne row per term; `rule` names the craft rule (`../rules/<rule>.md`) that owns it. A craft term is referenced,\nnever defined, by the Agent vocabulary (Rule-6).\n\n| term | definition | rule |\n|------|------------|------|\n",
+        "templates/README.md": f"# {name} templates\n\nSeeds an instance copies (exempt from the instance-state scan).\n",
+        "guards/README.md": f"# {name} guards\n\nOne `<entity>.py` per entity kind, meeting the guard contract (Rule-21); its test at `../tests/guards/test_<entity>.py`.\n",
+        "docs/README.md": f"# {name} docs\n\nGeneric procedures of the craft; host values stay in the instance.\n",
+        "falsification/rules/README.md": f"# {name} falsification records\n\nOne record per craft rule (Rule-9 form: attack, result, survivor).\n",
+    }
+
+def cmd_new(repo: Path, a) -> int:
+    if not a or not _NAME.match(a[0]):
+        print("usage: dyad craft new <name>   (name: [a-z][a-z0-9-]*)", file=sys.stderr); return 2
+    name = a[0]; d = repo / "crafts" / name
+    if d.exists():
+        print(f"refused: crafts/{name} exists; not overwritten", file=sys.stderr); return 2
+    if name == guard().CORE_NAME:
+        print(f"refused: {name} is the core craft's name", file=sys.stderr); return 2
+    files = scaffold(name)
+    for rel, text in files.items():
+        f = d / rel; f.parent.mkdir(parents=True, exist_ok=True); f.write_text(text)
+    print(f"scaffolded crafts/{name} {SCAFFOLD_VERSION}: {len(files)} files; next `dyad craft check {name}`")
+    return 0
+
+def cmd_check(repo: Path, a) -> int:
+    return guard().main(a)
+
+def cmd_export(repo: Path, a) -> int:
+    if not a:
+        print(__doc__, file=sys.stderr); return 2
+    g = guard(); name = a[0]; d = repo / "crafts" / name
+    if not d.is_dir():
+        print(f"no craft crafts/{name}", file=sys.stderr); return 2
+    msgs = g.check_craft(repo, d, PKG, others=[o for o in g.crafts(repo) if o != d])
+    fails = [m for m in msgs if not m.startswith("warning:")]
+    for m in fails: print(f"FAIL [craft] {m}", file=sys.stderr)
+    if fails:
+        print(f"refused: crafts/{name} fails its check; not exported", file=sys.stderr); return 1
+    out = Path(a[1]) if len(a) > 1 else Path(f"{name}-{g.version(d)}.tar.gz")
+    distribute.build(repo, [f"crafts/{name}"], out)
+    print(f"exported crafts/{name} {g.version(d)} -> {out} (sha256 {tree_sha(repo, name)[:8]})")
+    return 0
+
+def stage(src: Path, craft: str | None, tmp: Path) -> Path:
+    """The source as a tree root holding exactly one `crafts/<name>/`: an archive extracted, a `…/crafts/<name>`
+    directory copied under `tmp/crafts/`, or a repo root with --craft used as it is (its other crafts ignored)."""
+    src = Path(src)
+    if src.is_file():
+        return distribute.extract(src, tmp)
+    if not src.is_dir():
+        raise FileNotFoundError(f"no such source {src}")
+    if craft:
+        if not (src / "crafts" / craft).is_dir():
+            raise FileNotFoundError(f"{src} has no crafts/{craft}")
+        return src
+    if not (src / "VERSION").exists():
+        raise ValueError(f"{src} is not a craft (no VERSION); a repo root needs --craft <name>")
+    shutil.copytree(src, tmp / "crafts" / src.name, ignore=shutil.ignore_patterns("__pycache__"))
+    return tmp
+
+def cmd_install(repo: Path, a) -> int:
+    got = dyadlib.cli_parse(CLI_FLAGS["install"], list(a))   # the gate's reading: a value is never a flag (#592)
+    if not got.pos:
+        print(__doc__, file=sys.stderr); return 2
+    g = guard()
+    force, dwork, craft, source = "--force" in got.bare, got.one("--dwork"), got.one("--craft"), got.one("--source")
+    src = Path(got.pos[0])
+    tmp = Path(tempfile.mkdtemp(prefix="dyad-craft-"))
+    try:
+        try:
+            root = stage(src, craft, tmp)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"refused: {e}", file=sys.stderr); return 2
+        names = [d.name for d in g.crafts(root)] if not craft else [craft]
+        if len(names) != 1:
+            print(f"refused: {src} holds {len(names)} crafts ({', '.join(names)}); one per install", file=sys.stderr); return 2
+        name = names[0]; sd = root / "crafts" / name; ver = g.version(sd)
+        msgs = g.check_craft(root, sd, PKG, others=[o for o in g.crafts(repo) if o.name != name])
+        fails = [m for m in msgs if not m.startswith("warning:")]
+        for m in fails: print(f"FAIL [craft] {m}", file=sys.stderr)
+        if fails:
+            print(f"refused: crafts/{name} fails its check; not installed", file=sys.stderr); return 1
+        missing = g.unmet(repo, sd)
+        if missing:
+            for m in missing: print(f"FAIL [craft] crafts/{name}: {m}", file=sys.stderr)
+            print(f"refused: crafts/{name} {ver}: requirements unmet in {repo}; install them first (never fetched)", file=sys.stderr); return 1
+        rows = registry_rows(repo); dest = repo / "crafts" / name
+        if dest.is_dir() and not force:
+            row = rows.get(name)
+            if row is None or row["sha256"] != tree_sha(repo, name):
+                print(f"refused: crafts/{name} is locally modified or authored here; `--force` overwrites, or export it first", file=sys.stderr); return 1
+        changed = distribute.install(root, repo, [f"crafts/{name}"], prune=True, hooks=None)
+        new = {"craft": name, "version": ver, "source": source or distribute.source_name(src), "sha256": tree_sha(repo, name), "d-work": f"#{dwork}" if dwork else (rows.get(name, {}).get("d-work", ""))}
+        if rows.get(name) != new:
+            rows[name] = new; write_registry(repo, rows); changed += 1
+        print(f"installed crafts/{name} {ver}: {changed} changes")
+        for m in g.seed_status(repo, dest):   # advisory only; never written here (Rule-11 p2, #180)
+            print(f"warn [craft] {m.removeprefix('warning:').strip()}")
+        return 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+def source_root(src: Path, root: str, tmp: Path) -> Path:
+    """The source of a diff as a tree root holding `root`: an archive extracted under `tmp`; a directory that already
+    holds `root` (a clone, a repo root) as it is; a bare `…/crafts/<name>` directory staged under `tmp` (`stage`)."""
+    src = Path(src)
+    if src.is_file():
+        return distribute.extract(src, tmp)
+    if not src.is_dir():
+        raise FileNotFoundError(f"no such source {src}")
+    if (src / root).is_dir():
+        return src
+    if root != CORE_ROOT and (src / "VERSION").exists() and src.name == Path(root).name:
+        return stage(src, None, tmp)
+    raise ValueError(f"{src} holds no {root}/")
+
+def tree_diff(repo: Path, root: str, sroot: Path, src_modes: dict[str, int]) -> list[tuple[str, str, str]]:
+    """(kind, path, detail) for every path under `root` that differs between the installed tree on disk (`repo`,
+    untracked files included — an install is not yet committed, `tree_sha`) and the source tree `sroot`, read with
+    the install's own readers (`distribute.files`, the index or archive modes). Kinds, from the installed side:
+    `added` (here, not in the source), `removed` (in the source, not here), `modified` (bytes differ), `mode`
+    (same bytes, the executable bit differs). Sorted by path."""
+    here = distribute.files(repo, [root], tracked=False); there = distribute.files(sroot, [root])
+    dmodes = distribute.git_modes(repo, [root])
+    out = []
+    for rel in sorted(set(here) | set(there)):
+        if rel not in there:
+            out.append(("added", rel, "")); continue
+        if rel not in here:
+            out.append(("removed", rel, "")); continue
+        a, b = sroot / rel, Path(repo) / rel
+        if not filecmp.cmp(a, b, shallow=False):
+            out.append(("modified", rel, "")); continue
+        ma, mb = src_modes.get(rel, distribute._mode(a)), dmodes.get(rel, distribute._mode(b))
+        if ma != mb:
+            out.append(("mode", rel, f"{ma:o}->{mb:o}"))
+    return out
+
+def patch_text(repo: Path, sroot: Path, diffs) -> str:
+    """A unified diff, source -> installed, of every added, removed or modified text file (`difflib`, stdlib);
+    a file either side cannot decode as UTF-8 is named on one line instead. Applying it to the source
+    reproduces the installed tree's change: the back-port's patch (dyad/playbooks/port.md)."""
+    out = []
+    for kind, rel, _ in diffs:
+        if kind == "mode":
+            continue
+        a, b = sroot / rel, Path(repo) / rel
+        try:
+            sa = a.read_text(encoding="utf-8").splitlines(keepends=True) if kind != "added" else []
+            sb = b.read_text(encoding="utf-8").splitlines(keepends=True) if kind != "removed" else []
+        except UnicodeDecodeError:
+            out.append(f"Binary files differ: {rel}\n"); continue
+        out += difflib.unified_diff(sa, sb, fromfile="/dev/null" if kind == "added" else f"a/{rel}", tofile="/dev/null" if kind == "removed" else f"b/{rel}")
+    return "".join(l if l.endswith("\n") else l + "\n\\ No newline at end of file\n" for l in out)
+
+def cmd_diff(repo: Path, a) -> int:
+    """`dyad craft diff <craft> --against <src> [--patch]` (module docstring; d-work #353). Reads only."""
+    got = dyadlib.cli_parse(CLI_FLAGS["diff"], list(a))   # the gate's reading: a value is never a flag (#592)
+    if not got.pos or not got.one("--against"):
+        print("usage: dyad craft diff <craft> --against <archive|tree> [--patch]", file=sys.stderr); return 2
+    name, src, patch = got.pos[0], Path(got.one("--against")), "--patch" in got.bare
+    root = craft_root(name)
+    if not (repo / root).is_dir():
+        print(f"refused: no {root}/ here (installed crafts: `dyad craft list`)", file=sys.stderr); return 2
+    tmp = Path(tempfile.mkdtemp(prefix="dyad-diff-"))
+    try:
+        try:
+            sroot = source_root(src, root, tmp)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"refused: {e}", file=sys.stderr); return 2
+        src_modes = distribute.archive_modes(src) if src.is_file() else distribute.git_modes(sroot, [root])
+        diffs = tree_diff(repo, root, sroot, src_modes)
+        for kind, rel, detail in diffs:
+            print(f"{kind} {rel}" + (f" {detail}" if detail else ""))
+        counts = {k: sum(1 for d in diffs if d[0] == k) for k in ("added", "removed", "modified", "mode")}
+        print(f"{root} vs {src}: " + (", ".join(f"{n} {k}" for k, n in counts.items() if n) if diffs else "unchanged"))
+        if patch and diffs:
+            sys.stdout.write(patch_text(repo, sroot, diffs))
+        return 1 if diffs else 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+def main(a=None) -> int:
+    a = sys.argv[1:] if a is None else list(a)
+    repo = dyadlib.repo_root()
+    if not a or a[0] not in CLI_FLAGS:
+        print(__doc__, file=sys.stderr); return 2
+    return {"new": lambda: cmd_new(repo, a[1:]), "list": lambda: cmd_list(repo), "check": lambda: cmd_check(repo, a[1:]), "export": lambda: cmd_export(repo, a[1:]),
+            "install": lambda: cmd_install(repo, a[1:]), "diff": lambda: cmd_diff(repo, a[1:])}[a[0]]()
+
+dyadlib.enforce(INVARIANTS, __name__)   # Rule-12 p1: the fail-loud check, at import (crafts/syseng/rules/invariants.md p1, #203)
+
+if __name__ == "__main__":
+    sys.exit(main())

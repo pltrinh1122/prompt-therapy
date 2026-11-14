@@ -1,0 +1,282 @@
+# Falsification record — Rule-12 (verifiable code), Architecture Rule 2 (ledger #74)
+
+**Claim (operator, 2026-09-13):** during implementation, select the path that maximizes the
+yield of reusable code, because code can be mechanically verified.
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | "Maximize" as a sole objective licenses scope growth against the plan-`Y` and unplanned refactors. | Confirmed | Choose among paths that satisfy the plan; reuse beyond scope is a new plan (property 4). |
+| 2 | "Code can be verified" is a claim: none of the five guards has a test. | Confirmed | Code is verifiable only when it ships with its check (property 2); audit V1 records the gap. |
+| 3 | Overlap with Rule-11 property 5 (scripted, tested install). | Survives | Rule-11: the package is tested; Rule-12: how to choose the path that yields testable code. One-way, named. |
+| 4 | Some checks are inference-only (Rules 2, 5, 9, 10). | Survives | Property 1: what cannot be checked mechanically stays inference and says so. |
+| 5 | More code is more surface. | Survives | The check is the condition of entry; unchecked code does not enter. |
+
+## Rule-5 pairwise statements (Rule-12 added)
+- 12–1: no paths. 12–2: no event. 12–3: scope is the plan's; one-way. 12–4: block. 12–5:
+  this statement. 12–6: two terms. 12–8: a host action is not code; disjoint. 12–9: the path
+  choice is a claim in the plan, falsified there. 12–10: alternatives are framed per Rule-10.
+  12–11: named in Boundaries, one-way. Coherent, orthogonal.
+
+## Rule-6: `implementation path`, `mechanical check` added, owner 12.
+
+Disposition: see ledger #74.
+
+## Amendment — d-work #151 (2026-09-14, Rule-21 guard containment)
+Enforcement: `check_rule_12` maps `dyad/guards/<corpus>/<entity>.py` → `dyad/tests/guards/<corpus>/test_<entity>.py` beside the `scripts/` mapping (Rule-21). Pairwise: see `rule-21-guard-containment.md`; the Rule's own concern is unchanged.
+## Amendment — d-work #155 (2026-09-14, craft extraction R-craft-1)
+`check_rule_12`'s mapping gains the craft branch (`crafts/<craft>/guards/<e>.py` → `crafts/<craft>/tests/guards/test_<e>.py`; a craft script's, when one exists, → `tests/test_<n>.py`) and runs each present `crafts/<craft>/tests/` as its own suite; Enforcement says so. Pairwise: 12–21 as in `rule-21-guard-containment.md`; 12–11: the runner still owns no semantics. Coherent, orthogonal.
+
+## Amendment — d-work #160 (2026-09-14, sysarch extraction R-craft-3)
+p1's design half restated in `crafts/sysarch/rules/guards.md`; `check_rule_12`'s mapping gains a craft's `projectors/`
+(`crafts/<craft>/projectors/<n>.py` → `crafts/<craft>/tests/test_<n>.py`) so the moved projector code stays checked on every
+push (plan #160 attack 5); Boundaries name the craft rules. p1's implementation half, p3, p4 stay pending #162 (D1).
+Pairwise: 12–11 as in `rule-11-distribution-structure.md`; 12–20 unchanged. Coherent, orthogonal. Disposition: see ledger #160.
+
+## Amendment — d-work #162 (2026-09-14, syseng extraction R-craft-4)
+p1 (code over inference), p3, p4 and Enforcement's test mapping moved to `crafts/syseng/rules/verifiable-code.md`;
+the kernel keeps one property (code carries its check, run in CI) and gains the term `invariant` (Rule-6, owner 12):
+the check a module carries for its own model, run by the runner's pass before any check (`dyad check`,
+`check --guards`, `--evidence`: `[invariant]` lines) and at the mutating call sites (`dwork new|state`, `runbook run`);
+its form (never `assert`; `INVARIANTS`, `check_invariants`, `InvariantError`) is `crafts/syseng/rules/invariants.md`.
+`check_rule_12` keeps "run the tests"; the mapping is the craft guard `syseng/tests`, the `assert` ban and the
+must-declare check the craft guard `syseng/invariants` (plan #162 attack 7: two predicates, two owners). `implementation
+path` and `mechanical check` leave the Agent vocabulary for the craft's `CRAFT.md`; the Target keeps the phrase and
+means the craft's sense. Pairwise: 12–11 the runner runs the pass, Rule-11's Enforcement names it, Rule-12 owns the term;
+12–3 a false invariant is an incident (Rule-3's form, referenced); 12–20 unchanged; 12–13, 12–14 unchanged. Coherent,
+orthogonal. Disposition: see ledger #162.
+
+## Amendment — d-work #159 (2026-09-24, property 2: the suite is the runner's to run)
+
+**Claim:** a release that ships a push-time test gate must also ship the directive to use it —
+the Agent defers the suite to that gate and does not hand-run a whole test root.
+
+Occasioned by an Operator prompt during the release d-work #158, and by #154's audit: the capability
+to run the suite cheaply had existed all along (`check_rule_12` sets `DYAD_NO_NESTED_TESTS` for the
+child it spawns), and the Agent still paid about three times for it, 134 times in one session,
+3,894 s — the largest single number in that audit and required by no Rule.
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | A Rule that says "prefer this command" is not a Rule: Rule-4 wants a process binding, not a style tip. | Survives, scoped | It binds what the Agent does before asking for a Done-`Y`: the evidence it cites comes from the gate, not from a hand-run whose environment it may have forgotten. Written as a property of Rule-12's own check, never as advice. |
+| 2 | Rule-13 already makes recurrence propose code, and #155 built it — the directive is redundant. | Refuted | Rule-13 binds the *plan* that proposes code. Nothing said the Agent must then use it, and the audit measured exactly that gap. |
+| 3 | The gate cannot be deferred to where it does not run: no remote, no `origin/main`. | Refuted by #158 | `cmd_guards` returned before the gate on an unresolvable base; #158 moved the suite above that return and made an unknown range run it. This property lands after that. |
+| 4 | "Never hand-run" is too absolute: a failing case needs its own output. | **Confirmed — and the property says so** | It names `dyad check --tests <target>` for one module, class or method as the debugging path, and reserves the objection to a whole root, which the gate has already covered. |
+| 5 | It slows the Agent: it must push to learn that a test fails. | Survives, scoped | It must push *or* run one target. What it may no longer do is re-run 490 tests it did not change. |
+| 6 | The directive belongs in the incident-hardening play-book (#137), not in a Rule. | Refuted | That play-book is a procedure for a recurring decision about incidents; this is a standing constraint on every d-work, and a play-book is read by a Rule, never instead of one. |
+
+Pairwise (Rule-5): 12–14 property 3 owns *where* the kernel-only path runs and when it is the merge
+evidence; property 2 owns *who runs Rule-12's suite*, and cites Rule-14 rather than restating it.
+12–13 Rule-13 owns the move from inference to code (recurrence proposes it); property 2 owns the use
+of the code once it exists — no shared ownership. 12–11 the runner is Rule-11's and runs the pass;
+Rule-12 keeps its check's semantics, unchanged. 12–3 a d-work's completion evidence is Rule-3's; this
+property says only which run produced it. 12–1, 12–2, 12–15, 12–16, 12–20 untouched. Coherent,
+orthogonal. Disposition: see ledger #159.
+
+## Amendment — d-work #199 (2026-09-30, node N2 for backlog row #162: property 2 gains the suite memo)
+
+**Claim:** the pre-push path may skip Rule-12's suite when a suite memo on this checkout proves the
+same tree already passed every root in the same environment, and `check --evidence` never reads one.
+
+Occasioned by #161's C2: `check --evidence` runs the suite on a branch head, and the post-merge push
+of `main` runs it again over a merge commit whose tree, for 53 of 112 merges in seven days, is the
+same tree. Mechanism (`dyad/scripts/package.py`): `check_rule_12` and `cmd_tests()` without a target
+write `<git common dir>/dyad-suite-memo/<key>` after a full, all-roots pass on a clean tree
+(`os.replace`, pruned to the newest 64); `suite_gate` reads it only under `pre_push`, as its last
+clause before "run" — first `head`'s own tree, then a ledger-only branch's merge-base tree.
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | Unobserved evidence: a memo puts an assumed pass where Rule-3 wants every result "as observed, never assumed" (#161 C2 attack 1). | **Refuted by construction** | The memo is read in one place, `suite_memo_clause`, reached only from `suite_gate` under `pre_push`. `cmd_evidence` runs `cmd_check` (the suite, observed) and then `cmd_guards()` without `pre_push`; `check --guards` without `--pre-push` never reads it either. Tests plant a matching memo and assert both still run the suite and record no memo read. The skip line is printed by the hook, never into an evidence block. |
+| 2 | Key completeness: a tree hash misses inputs the suite reads outside the tree. | **Confirmed; survives as a closed list, stated** | Keyed: the tree; `sys.executable` and `sys.version`; `git --version`; the sorted roots `test_suites()` runs (a craft added or removed is a new root); the env knobs the runner, `dyadlib` and the craft guards read (`DYAD_INSTANCE`, `DYAD_HOST`, `DYAD_HOST_ZONE`, `DYAD_OPS`, `DYAD_RUNBOOKS`, `DYAD_ROLE`; not `DYAD_SESSION`, a presence id, nor `DYAD_NO_NESTED_TESTS`, unset whenever a memo is read or written); a digest of `refs/tags` (`check_drift`); a digest of the instance's `*.local.txt` (git ignores `provenance_legacy.local.txt`, which the provenance guard reads, so it can differ between worktrees of one tree); the UTC date, which bounds every unkeyed input to one day. Not keyed, stated: installed third-party packages (none is imported today; pydantic is a kernel row "adopted when a plan first imports it" — that plan adds its version to the key), and `origin/main` (below). A miss only costs a real run. |
+| 3 | `origin/main` is an input — real-repo `check --guards` children judge `origin/main..HEAD` — and plan #199 listed the base sha in the key. | **Survives, scoped; a departure from the plan's key list, reported** | The history-dependent verdicts are the transaction guards, and the push gate runs every one of them on every push, unmemoized: the memo skips the suite, never a guard. Keying the base would also make the second clause unreachable by definition (a ledger branch behind `origin/main` is one whose base has moved past its merge-base). The node brief omitted it; the omission is stated here and in the completion reply. |
+| 4 | A stale memo after a force-push: history is rewritten, the memo still says "passed". | **Survives** | The memo is keyed by tree, never by commit or ref; a force-push to a tree that passed is still that tree, and one to any other tree is a miss. What depends on history is attack 3's guards, which run. A memo past its day is dead by key. |
+| 5 | A memo shared across worktrees lets one worktree's pass stand for another's different state. | **Survives, scoped** | Sharing is the point (the merge runs in one worktree, the push from another checkout of `main`). What differs between worktrees of one tree is untracked or ignored state: untracked files make the tree dirty, and no memo is read or written then; the ignored instance data the guards read is keyed (attack 2). The ignored build output (`__pycache__/`, `*.pyc`) cannot change a verdict. A test writes from a linked worktree under the hook's `GIT_DIR` and finds the file in the common dir, and a hit from the main worktree. |
+| 6 | A poisoned memo: anyone can write a 64-hex file by hand and skip the suite. | **Survives; trust model stated** | Writing `.git/dyad-suite-memo/` needs the same user, on the same checkout, as editing `.git/hooks`, setting `core.hooksPath` or pushing with `--no-verify` — each of which already skips the whole hook. The memo grants that party nothing it lacks; the hook is the Agent's fence against its own mistakes, never a boundary against the checkout's owner. The merge evidence never reads it (attack 1), and hosted CI corroborates on `main` after the merge (Rule-14 property 3). A file that is not the key of a pass only ever produces a hit for the exact key it names. |
+| 7 | A partial, failed, targeted or moving run could be memoized. | **Refuted by construction** | Only `check_rule_12` (every root) and `cmd_tests()` with no target write, only when every root passed, and only when the parts read before the run equal those read after it (a commit, a tag or an untracked file mid-run is no write). Tests: a dirty tree, a dotted target, one root by path and a failure each leave the store empty; a clean full pass writes exactly its key. |
+| 8 | The second clause (ledger branch behind `origin/main`) passes a merge commit's own changes as ledger-only. | **Confirmed of the walk alone; closed** | The three-dot walk (`dyadlib.ledger_only`, the plan gate's) reads non-merge commits only, so the clause also requires the tree difference between the merge-base and `head` to lie under `<instance>/d-work/` (`dyadlib.ledger_only(..., merge_base=False)`); the premise that a ledger-only difference cannot change a suite's outcome is #155's, unchanged. A branch with one non-ledger commit runs (tested). |
+| 9 | N1's invariant — an unknown or unreadable range runs — is weakened by a memo hit. | **Refuted** | The memo clause is reached only after the range was read and found neither empty nor ledger-only; an unresolvable base or an unreadable range returns "run" before it. |
+
+Pairwise (Rule-5): 12–2 Binding names `check --evidence` as the merge evidence; the memo is never read
+there, so the Binding is unchanged and property 2 cites it. 12–3 the completion evidence is Rule-3's
+and pastes the evidence block, which carries no memo line; property 2 changes which push runs the
+suite, not what a Done-`Y` is asked on. 12–11 the runner is Rule-11's and owns no semantics; when the
+suite may be skipped is Rule-12's own check's concern, placed in the runner as `check_rule_12` is. The
+memo lives under the git directory, never in the tree, so property 6 (generated files never tracked)
+is not engaged and no craft carries instance state. 12–14 property 3 owns where the kernel-only path
+runs, that the pre-push hook is the only check before a merge and that `--evidence` is the merge
+evidence; property 2 owns only when its own suite may be skipped on that path, and cites property 3
+rather than restating it — the guards the hook runs are never skipped. 12–16 the memo is not the
+d-work store and touches no row, plan or presence file; concurrent sessions on one checkout share it
+by design, each write atomic and each file named by its own key, so two writers never collide on
+content. 12–1 `.git/` is no zone's path and the memo is no repo transaction. 12–6 one term added,
+`suite memo`, owner 12, used by 12. 12–8 the memo is a file the runner writes inside the checkout's
+git directory, as git writes its index — stated as inference, not a host action the Agent takes.
+12–4 the block is unchanged. 12–7, 12–9, 12–10, 12–13, 12–15, 12–18, 12–19, 12–20 untouched.
+Coherent, orthogonal. Disposition: see ledger #199.
+
+## Amendment — d-work #199 (2026-10-01, node N5 for backlog row #176: property 2 gains the installed-root skip)
+
+**Claim:** the pre-push path may skip a test root whose installed tree is byte-identical to its craft
+registry row (Rule-11 property 2), and `check --evidence` runs every root.
+
+Occasioned by #176 (relayed via #175 S6): a system that installs the crafts and authors none of them
+ran their authoring suites on every push (countersign-system: 494 core tests per push), over trees it
+had installed and never changed. Mechanism (`dyad/scripts/package.py` `installed_roots`, consulted by
+`cmd_guards` only under `pre_push`, only after `suite_gate` — its memo clause included — has said
+run): a root `dyad/tests` maps to the `dyad-operator` row and `dyad/`, a root `crafts/<c>/tests` to row
+`<c>` and `crafts/<c>/`; `craft.unmodified` compares the row's `sha256` with `craft.tree_sha`, the
+computation `dyad craft install` already writes. The roots left run through `cmd_tests(roots=…)`, a
+partial run, never memoized.
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | A modified file under an installed root still skips. | **Refuted by construction** | The hash is `distribute.archive_sha256` of the tree on disk: one byte, one mode bit, one added or removed file (untracked or ignored included; only `__pycache__` and `.git` are skipped) is another sha, and the root runs. Under `--pre-push` the tree is the pushed commit's (#194 refuses a dirty one). Tested: a test file added under `dyad/tests` runs the core root. |
+| 2 | A registry row edited by hand (or a sha recomputed to match a modified tree) buys a skip. | **Survives, scoped** | A range that changes `crafts/REGISTRY.md` runs every root, so a hand-edited or a newly written row is first judged by a full run in this system; tested. A row edited in a range the hook never judged (`--no-verify`, a hook unset) is N2's attack 6 again: the party that can do it can already skip the whole hook. The merge evidence never reads the registry for this purpose (attack 4). |
+| 3 | An authoring repo that also has rows skips the suite of what it authors. | **Refuted as stated; scoped** | A craft authored here has no row (Rule-11 property 2: `dyad craft list` shows it `authored`), so its root runs; this repo's registry has no row at all and its gate is unchanged. A row exists only for a tree an install wrote, and the first edit to that tree changes its sha. A repo that installs one craft from elsewhere skips that craft's root alone, exactly while it is the installed bytes. |
+| 4 | The evidence path loses roots: an assumed pass in the merge evidence. | **Refuted by construction** | `installed_roots` is called from `cmd_guards` only when `pre_push` is set; `cmd_evidence` calls `cmd_check()` (every root, observed) and `cmd_guards()` without it, and `check --guards` without `--pre-push` never calls it. Tested: under `--evidence` the suite runs through `check`, and without `--pre-push` `cmd_tests` gets every root; neither prints an `installed unmodified` line. Every merge an operating system makes still runs every root (Rule-14 property 3). |
+| 5 | Plan A4: what an installed system checks at push is the Operator's policy — a preference (`system-profile`) — not a refactor. | **Survives, scoped (as the plan's A4)** | A preference is refuted as the mechanism: an Operator-owned value set to `operating` in an authoring repo would drop the suite by configuration. What skips is decided by bytes alone — only a tree identical to a recorded install — and only at the push gate, never at the merge evidence. It still changes every installed system's push and edits Rules 11 and 12, which is why the plan named both amendments for its `Y` to bind and placed this node last; conceded, as there, that the Operator may want it decided alone, and an `N` re-plans this node only. |
+| 6 | Roots are not independent: a craft's tests import the core, and the core's tests read the crafts and the instance. | **Confirmed; closed for the first, scoped for the second** | A Tended craft's root skips only while the core's tree is unmodified too (tested: a core edit runs every root). Neither `requires:` between Tended crafts nor the instance is hashed: the core's live tests (`LiveCase`) read the instance's stores, which change on every push. The guards judge those stores on every push, unmemoized; the live tests over them run at every merge's evidence and on any push that changes the registry. A live test that fails where its guard passes is found there, one merge later at most. |
+| 7 | The installed tree passed in its authoring system, not in this one: another interpreter, another git, another instance. | **Survives, scoped** | The first push after an install changes the registry and so runs every root here (attack 2). An interpreter or git upgrade later is not keyed (unlike the memo, N2 attack 2): it is observed at the next `check --evidence`, which runs every root. |
+| 8 | A bundled craft (Rule-11 property 2) is written by `dyad install` with no row, so its root never skips. | **Confirmed; out of scope, reported** | Conservative: no row is "run". The missing row is backlog #201 (opened 2026-10-01), which also blocks `dyad craft install` of that craft afterwards; when #201 writes the row, this clause skips that root with no further change. |
+| 9 | A partial pre-push run writes a suite memo under the all-roots key, so a later push skips roots that never ran. | **Refuted by construction** | `cmd_tests(roots=…)` sets no memo parts, as a targeted run does (N2 attack 7); the memo key's `roots` part stays `test_suites()`, every root, so a hit still means every root passed. Tested: the gated push leaves the memo store empty, and a full run after it writes exactly its key. The memo clause precedes this one, so a memo hit skips every root before any hash is computed. |
+| 10 | An unreadable range or an unresolved base skips through the registry. | **Refuted** | `installed_roots` returns every root when `range_paths` is None, and `cmd_guards` never calls it without a resolved base; N1's invariant ("an unknown range runs") is unchanged. |
+
+Measured (a scratch operating install; Falsification A5's method): see the completion reply of node N5
+and the audit M.
+
+Pairwise (Rule-5): 12–11 the registry and its row are Rule-11's (property 2, amended in the same
+d-work); property 2 here reads the row and owns only when its own suite may skip on the push path.
+12–2 Binding names `check --evidence` as the merge evidence, which runs every root; unchanged. 12–3
+the completion evidence pastes the evidence block, which never carries this skip line. 12–14 property
+3 owns where the kernel-only path runs; property 2 cites it and skips no guard. 12–1 the registry stays
+craft zone and is written by an install, never by this check. 12–6 the term `craft registry` gains
+Rule-12 as a user; its definition gains the core row. 12–16 no row, plan or presence file is read.
+12–4 the block is unchanged. 12–7, 12–8, 12–9, 12–10, 12–13, 12–15, 12–18, 12–19, 12–20 untouched.
+Coherent, orthogonal. Disposition: see ledger #199.
+
+## Amendment — d-work #203 (2026-10-02, node P2: property 1 gains the fail-loud check)
+
+**Claim:** a module's pure `INVARIANTS` are a fail-loud check, enforced by the module at its own import
+(`dyadlib.enforce(INVARIANTS, __name__)`, no off-switch); the predicates that read the tree or load
+modules are `TREE_INVARIANTS` and never run at import; the runner's pass runs both lists; and a fail-loud
+check at a strategic point counts as the code's mechanical check, so a test that only exercises its
+condition is redundant with it.
+
+Occasioned by the Operator's prompt of #203 (provenance entries 1–3): "fail-loud checks in the target
+code being tested", read as reading B — "one that runs at import or on every use … this is what i
+meant" — and bounded: "strategic use is required". The form, the two lists and the placement criterion
+are the syseng craft's (`crafts/syseng/rules/invariants.md` p1 and p4, amendment #203 in its own record,
+node P1); this amendment covers only the kernel sentence of property 1 and the core code (node P2).
+Mechanism: `dyadlib.enforce` and `false_invariants`; `invariants_of` reads both lists, so
+`check_invariants` — the pass and the `dwork`/`runbook.run` call sites — runs both; `invariant_modules`
+reports a module whose import raised as `FAIL [invariant] <label>: does not load: …` and runs the rest;
+`load_module` drops a module whose import raised from `sys.modules`; all 22 core modules that declare
+`INVARIANTS` end with the call; twelve impure predicates moved (references 8, package 2, craft 1; the
+sysarch projector's `relations-from-register` is craft zone and stays, a warning). Plan #203 A6 and A7
+are the parent attacks; the rows below are this node's.
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | Fail-closed: a false invariant in the runner's own modules (`dyadlib`, `package`) stops every `dyad` command, `check --evidence` and `dwork` included, so Rule-2's evidence is absent exactly when it is most needed, and the incident cannot be recorded through `dwork`. | **Confirmed; conceded, bounded** | The cost is accepted, as plan #203 A7 and invariants.md p4 state it: `rc ≠ 0`, one line on stderr (`InvariantError: dyadlib: invariant(s) failed: <names>`, no traceback — `package.py` installs a one-line hook only when it is `__main__`), no block. Rule-2's Binding reads an absent block as an absent check, so nothing merges on it: fail-closed, never fail-open. A pure predicate has the same value on every host, so a false one cannot reach `main` through a green block — that block's own import would have failed. The incident is recorded by hand (Rule-3 Incidents). Tested: `dwork new` and `check --list` both stop with that one line and write no row. |
+| 2 | Cost at import: every process, every test module and every guard load now runs predicates it did not before (#162 attack 1 confirmed this cost once). | **Survives, measured** | The 71 pure predicates of the 22 core modules take 0.13 ms per full sweep, warm, in-process. `import dyadlib, package`, 5 interleaved runs per tree after a warm-up: P1 tree median 176.0 ms, this node 171.4 ms (ratio 0.97, inside the spread of 158–197 ms; no cost is distinguishable). What made import slow in #162 were the I/O predicates (0.8–1.4 ms each); they are `TREE_INVARIANTS` and never run there, and syseng guard (v) fails one left in an enforcing module's `INVARIANTS`. |
+| 3 | Operating-system import breakage: an installed system's guards, projectors or hooks stop importing after an upgrade, where today a false invariant was one red line in the pass. | **Survives, scoped** | Purity is what makes the value host-independent: no filesystem, version control, environment or module loading (syseng p1; guard (v) audits the events, and an environment read through `os.environ`). So a predicate true in the authoring system's evidence is true at every install; what differs by host is outside the list by construction. What (v) cannot see — a C-level `getenv`, a value read at import and then compared — is inference, stated in p1. A guard whose import fails is still one red line (`does not load`) and every other check runs; a pass module (projector, `runbook`, `craft`, `distribute`) is now caught too, where before its raise would have aborted the pass. Craft modules are not changed by this node (a warning until a craft follow-up). |
+| 4 | An invariant that raises is a different failure from one that is false: treating both as false hides a programming error (a `NameError` from a predicate placed before the name it reads) behind an architectural message. | **Survives, scoped** | Both mean the module's stated fact cannot be shown to hold, so both stop the import, and the name in the message is the invariant's, which is where to look. Placement is the real risk: the call must follow every name the predicates read, not only the list. Each core module places it last, before `if __name__ == "__main__"` (package's `contract-names-distinct` reads `CONTRACT`, bound about 270 lines after its list: placed at the list, it would raise on every import — the reason the call goes last). Guard (iv) checks the call follows the list's last binding; a later-bound name is not checked mechanically, but it fails on the first import, so it cannot pass any test or evidence run. Tested: `enforce` names a raising predicate among the false, sorted. |
+| 5 | A module whose import raised stays in `sys.modules` (`load_module` registers it before executing), so the next load returns it half-initialised and the check fails loud only once. | **Confirmed; closed** | `load_module` now deletes the entry when execution raises, as the import system does for `import`. Tested: two consecutive loads of a module with a false invariant both raise and leave no entry. |
+| 6 | "No off-switch" makes a broken invariant unfixable through the tool that would fix it (`dwork`, `check`). | **Survives** | The fix is an edit to the module's literal or to the predicate, made in an editor, not through `dyad`; an off-switch would make the check optional, which the Operator's "fail-loud" excludes (syseng p1). The pre-commit hook (`containment.py`) itself enforces only its own list, so a commit is blocked only when containment's own facts are false. |
+| 7 | The 12 moved predicates now run in fewer places: at the `dwork`/`runbook.run` call sites they ran via `check_invariants`, and they still do; did anything that read `INVARIANTS` alone lose them? | **Confirmed for one reader; reported** | `check_invariants` reads both lists (tested in the pass), as does the syseng guard's (iii). The sysarch entities projector reads `INVARIANTS` alone for its invariants column, so `agent/references` now shows 4 names there instead of 12 — a craft-zone reader, reported for the follow-up, not edited here (Rule-1). |
+| 8 | Easy agreement: the brief says "every core module that declares `INVARIANTS`". Is any core module's pure list actually impure outside the pass that guard (v) audits? | **Pushed** | `livetest` and `incidents` are not pass modules, so (v) never audits them; their predicates were run under the guard's own audit child by hand: no event. |
+
+Pairwise (Rule-5): 12–2 Binding reads the evidence block; a false runner invariant yields no block,
+which the Binding already reads as an absent check (attack 1) — Rule-2 is unchanged and cited, never
+restated. 12–3 Incidents owns what a false invariant is ("an incident") and how it is recorded;
+property 1 keeps the sentence and cites it; the completion evidence pastes the block, which now also
+carries a `does not load` line when one occurs; no counter-prompt changes. 12–11 the runner is Rule-11's
+and owns no semantics; it runs both lists and reports a load failure, Rule-12's check placed in the
+runner as `check_rule_12` is; Rule-11 Enforcement's "every model module's `INVARIANTS`" stays correct
+as a name of the pass and defers the term to Rule-12 — it now under-describes the pass by
+`TREE_INVARIANTS`, a wording sync left to the Operator, not a contradiction. 12–14 property 3 owns the
+kernel-only path; enforcement at import needs nothing beyond the kernel (Python), and the path's
+completeness is conceded only where the runner itself cannot import (attack 1). 12–16 no row, plan or
+presence file is touched; `dwork` writes exactly as before, and a false `dyadlib` invariant now stops it
+earlier (at import) rather than at its explicit call, which stays. 12–6 one term added (`fail-loud
+check`, owner 12, used by 12) and `invariant` redefined; Rule-11 and Rule-12, its users, still read
+correctly. 12–4 the block is unchanged. 12–1, 12–5, 12–7, 12–8, 12–9, 12–10, 12–13, 12–15, 12–18,
+12–19, 12–20 untouched. Coherent, orthogonal. Disposition: see ledger #203.
+
+## Amendment — d-work #381 (2026-10-22, the two kinds of check; #369 C3)
+Boundaries gain one bullet: the audit play-book (`dyad/playbooks/audit.md`) runs the self-diagnostic, two kinds of
+check at two scopes — a **coded check** and a **prose claim** read against a written attack — which the countersign
+craft's `rules/self-diagnostic.md` described and the craft's retirement (#369) moves into the core. The terms are
+adopted into the vocabulary with this child (the C2 table, rows 36 and 37, owner 12).
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | The bullet makes Rule-12 own the diagnostic. | **Refuted** | It is a Boundaries bullet: it names the play-book for what Rule-12 does not own (levels, gate, budget) and keeps only the two names, because property 1's "mechanical check" *is* a coded check and the Rule's "inference stated" *is* a prose claim; the play-book binds nothing (its own first paragraph). |
+| 2 | Two more terms before their rows land (Rule-6). | **Survives, scoped** | As Rule-3's amendment #381 attack 2: the rows are written and held by the collision fence; the words appear in the play-book's glossary meanwhile. |
+| 3 | The self-diagnostic's run-book under `dyad/runbooks/` is code without a check (property 1). | **Refuted** | `dyad runbook check` (the sysadmin craft's guard, through Rule-11's runner) checks every core run-book's form and declared sections; the live run-book test reads core run-books too. The steps' commands are the ones the system already has. |
+
+Pairwise (Rule-5): 12–3 Rule-3 cites the countersign model in the same child; Rule-12 cites the audit play-book;
+neither restates the other. 12–6 two terms, defined once when their rows land. 12–11 the runner is unchanged.
+12–19 a core run-book is checked with its own section set, as Rule-19's Boundaries already say. Others untouched.
+Coherent, orthogonal.
+
+Disposition: see ledger #381 (accreted under #369; its Done rides that mandate's Done-`Y`).
+
+## Amendment — d-work #438 (2026-10-25, property 2: an events-only range skips the suite)
+Property 2's pre-push path runs the suite on a range outside `<instance>/d-work/` unless the range is events-only
+(Rule-3, Ledger: every non-merge commit touching nothing outside `<runbooks>/events/`). Such a range holds events
+of read-only run-book commands, which Rule-3 makes clerical as it does the ledger (amendment #438 there).
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | A standing row and a PR per batch of events keep the suite on every push (plan #438 alternative a). | **Refuted** | Each batch paid about four minutes of suite for a change no test root's code depends on, and a question per ceiling that decides nothing. |
+| 2 | Skipping the suite lets a bad event reach `main` unchecked (alternative b). | **Refuted** | The guards still run on the kernel-only path; `sysadmin/events` checks the store's form and that it only grows. The suite tests code, and an events-only range changes none. |
+| 3 | The skip invites heartbeats to flood `main` (alternative c). | **Survives, scoped** | The sysadmin craft's property 7 records a read-only command's event only on a change of reading (craft amendment #438), so the range is rare as well as cheap. |
+| 4 | Precedent (the Rule-10 counter): the next class will ask for the same skip. | **Survives, bounded** | The skip follows Rule-3's class, not a path list of its own: whatever Rule-3 does not make clerical by Rule-2's test runs the suite. |
+
+Pairwise (Rule-5): 12–3 Rule-3 defines the events-only range; Rule-12 cites it and adds only the skip. 12–2 the
+commit's not being ratification is Rule-2's. 12–14 the kernel-only path is unchanged; `check --evidence` still runs
+every root. 12–1 one zone per commit, unchanged. 12–8 the read-only class, unchanged. 12–19 a deploy's health pass,
+unchanged. Others untouched. Coherent, orthogonal.
+
+Disposition: see ledger #438.
+
+## Amendment — d-work #562 (2026-11-03, property 2: the memo keyed on code; the skip on a head a `Y done` names)
+Claim (plan #562, from #561's replay of the #558 cut): a cut lands in about the time its merges and guards take when
+the pre-push path recognises code it has already judged — in this checkout's memo, or in the evidence the operator's
+Done-`Y` was given on — while no code the suite has not judged lands and the merge evidence stays a full run. The
+plan's eleven attacks are its record; the ones bearing on this Rule's text follow.
+
+| # | Attack | Result | Survivor |
+|---|--------|--------|----------|
+| 1 | "Only one suite run per cut is required." | **Refuted as too strong** | #558 needed none: its final tree differed from the evidenced head only in 13 ledger files. At most one run, when the cut lands as one push; none when its code equals code the Done-`Y`'s evidence passed. |
+| 2 | A code-digest hit lets code `main` gained during the drift go unjudged. | **Refuted by construction** | The digest prunes only `<instance>/d-work/` and `<runbooks>/events/`; any other path changes it, the hit fails and the suite runs. |
+| 3 | The suite's outcome can depend on the ledger. | **Survives, scoped** | Some tests read live rows tolerantly. The gate already assumes this twice, skipping a ledger-only push (#155) and a ledger-only range (#162); this widens the route to that assumption, never the assumption, and the guards still judge every pushed tree. |
+| 4 | Skipping on another unit's evidence trusts an environment the pushing checkout did not check. | **Confirmed as a limit; the operator's decision** | The plan put it as its own decision; the plan-`Y` of 2026-11-03 binds the path that includes it. Hosted CI still corroborates on `main` after the merge (Rule-14 property 3). |
+| 5 | The code identity needs a new field in the Done entry. | **Refuted** | The operative `Y done` already names every head, and Rule-2's Binding already says its evidence passed on exactly those heads; the runner computes a head's code digest from git. |
+| 6 | `check --evidence` could reuse the same skip. | **Refuted** | It never reads a memo and never skips (Rule-2, Binding); the skip is the pre-push path's alone. |
+
+Pairwise (Rule-5): 12–14 Rule-14 property 3 owns the evidence block and its `code=` line and names the hook's skip;
+Rule-12 property 2 owns when the suite runs. 12–2 Binding's evidence is unchanged and still a full run. 12–3 the
+operative `Y done` and the ledger-only class are Rule-3's, read, not restated. 12–16 the store paths are unchanged.
+Others untouched. Coherent, orthogonal.
+
+Disposition: see ledger #562.
+
+## Amendment — d-work #564 (2026-11-03: corroboration where the merge ran; the scheduled sweep)
+This Rule's sentence changes with property 3 of Rule-14; the claim, its attacks and the pairwise statements for every
+Rule this d-work touches are recorded once, in `rule-14-system-infrastructure.md`, amendment #564.
+
+Disposition: see ledger #564.
+
+## Amendment — d-work #617 (2026-11-06: the automaton sweep)
+This Rule's sentence changes with Rule-14's (property 2 names where the whole-store guards and the hosting's suite now run). The claims, attacks and pairwise statements are recorded once,
+in `rule-14-system-infrastructure.md`, amendment #617.
+
+Disposition: see ledger #617.
+
+## Amendment — d-work #619 (2026-11-06: the self-diagnostic reads the report)
+This Rule's sentence changes with Rule-14's (Boundaries: the self-diagnostic reads its coded checks from the automaton sweep's report and runs only the prose claims). The claims, attacks and pairwise statements are recorded once,
+in `rule-14-system-infrastructure.md`, amendment #619.
+
+Disposition: see ledger #619.
