@@ -67,7 +67,7 @@ allow: .github/workflows/lan-git-image.yml # publishes the lan-git craft's image
 allow: dyad/falsification/rules/rule-sets.md # the record of the two Rule sets (frame, #71), not of one Rule; predates the rule-<n>- pattern
 
 # The case standard (rules/naming.md, Case and separators; d-work #553). The list is closed: nothing joins it without a change there.
-upper: RULE-*-*.md VERSION README.md LICENSE CLAUDE.md MANIFEST.md CRAFT.md VOCABULARY.md PREFERENCES.md MANDATES.md INCIDENTS.md LEDGER.md BUNDLE.md INFRASTRUCTURE.md REGISTRY.md CHANGELOG.md
+upper: RULE-*-*.md VERSION README.md LICENSE CLAUDE.md MANIFEST.md CRAFT.md VOCABULARY.md PREFERENCES.md MANDATES.md INCIDENTS.md LEDGER.md BUNDLE.md INFRASTRUCTURE.md REGISTRY.md CHANGELOG.md rows-README.md events-README.md
 # L1, an outside standard's case: an ISO 8601 basic UTC stamp keeps its `T` and `Z` designators (the inbox's message names, #536).
 upper: ????????T??????Z-*
 refuse: bond = dyad/rules/* dyad/vocabulary/* dyad/playbooks/* dyad/CLAUDE.md # dyad-bond is another system; do not use "bond" for the pair (rules/naming.md, #553)
