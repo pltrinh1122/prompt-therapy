@@ -1,0 +1,73 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/provider-auth",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "provider-auth",
+  "name": "How a Prompt Therapy run authenticates to the Claude API",
+  "description": "Which authentication a run of Prompt Therapy uses against the Claude API, by where it runs and whose run it is, preferring a method with no stored secret, and never tying the running service to one person's sign-in.",
+  "dyad:decides": "How does this run authenticate to the Claude API: a person's sign-in, workload identity, CI federation, or an API key?",
+  "dyad:inputs": [
+    "where the code runs: a person's own machine, a cloud host or cluster with an identity provider, a CI pipeline, or elsewhere",
+    "whose run it is: a person's evaluation, test or demo, or the service itself",
+    "whether a long-lived secret can be kept safely where it runs",
+    "which methods the adapter supports (scripts/provider.py auth_headers: a Bearer token or a key; a workload token exchange needs the SDK or code of its own)",
+    "which account and workspace the spend lands on"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "sign-in",
+      "name": "Sign in on your own machine",
+      "dyad:when": "a person runs it on their own machine: an evaluation, a test or a demo",
+      "dyad:then": "the person signs in once with `ant auth login`; each run takes a fresh token from `ant auth print-credentials --access-token` into ANTHROPIC_AUTH_TOKEN, which the adapter sends as `Authorization: Bearer` with the OAuth beta header (the header is the bundled API reference's, not in the live docs read on the day of d-work #3: the first suspect if a request is refused); no key is stored; the spend lands on that person's workspace",
+      "dyad:effect": "settles"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "workload-identity",
+      "name": "Workload identity",
+      "dyad:when": "the service runs on a cloud host or cluster whose identity provider can issue it a token",
+      "dyad:then": "a service account, a federation issuer and a federation rule in the Claude Console; the workload exchanges its identity token at POST /v1/oauth/token for a short-lived access token; no API key exists; the production default, its exchange written at Deploy (the SDK does it, and the core refuses a craft import today)",
+      "dyad:effect": "asks"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "ci-federation",
+      "name": "CI federation",
+      "dyad:when": "an unattended pipeline job calls the API, such as a scheduled adversarial run",
+      "dyad:then": "the pipeline's own identity token is federated the same way; no stored secret",
+      "dyad:effect": "asks"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "api-key",
+      "name": "An API key, only where nothing else runs",
+      "dyad:when": "none of the methods above can run where the code runs, or a tool accepts only a key",
+      "dyad:then": "a key scoped to a workspace of its own with a spend limit, kept only as that host's secret, rotated; never in a repository, a file, a fixture or a chat; the adapter reads it from ANTHROPIC_API_KEY",
+      "dyad:effect": "asks"
+    }
+  ],
+  "dyad:precedence": "a method that stores no secret before a key; the service in production never runs on a person's sign-in, which ties it to one person's account, billing and departure; a token wins over a key when both are set (scripts/provider.py auth_headers)",
+  "dyad:default": "sign-in for a person's run; workload identity for the service",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/provider.md",
+  "dyad:alsoIn": [
+    "playbooks/deploy.md",
+    "scripts/provider.py",
+    "dmc/deploy-target.jsonld",
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

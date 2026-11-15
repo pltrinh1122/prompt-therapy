@@ -6,8 +6,8 @@ A provider words a reply for a walk state; it never chooses the state. `FakeProv
 from the context it is given, so every test runs offline, and it stays the default. `AnthropicProvider` (P3, d-work #3)
 has a Claude model, through the Messages API, write only the framing sentence of a reply; the adapter adds every part that must stay exact — the
 no-therapy line on the greeting, the numbered options, the anchor's words, the yes/no and what was kept — so a model
-can never drop or change one. The engine's never-rule check still runs on every outgoing line. Its key is the runner's own
-`ANTHROPIC_API_KEY`, never a file or a fixture.
+can never drop or change one. The engine's never-rule check still runs on every outgoing line. Its authentication is the runner's own
+(a sign-in token or a key, `dmc:provider-auth`), never a file or a fixture.
 """
 import sys
 if sys.version_info < (3, 12):
@@ -35,6 +35,7 @@ INVARIANTS = [   # crafts/syseng/rules/invariants.md
     ("greet-says-not-therapy", lambda: TEMPLATES["greet"].startswith(NOT_THERAPY)),
     ("templates-fit", lambda: all(len(t) < MAX_CHARS for t in TEMPLATES.values())),
     ("a-guide-per-state", lambda: set(GUIDE) == set(TEMPLATES)),
+    ("a-token-wins-over-a-key", lambda: "authorization" in auth_headers({"ANTHROPIC_AUTH_TOKEN": "t", "ANTHROPIC_API_KEY": "k"})),
 ]
 
 
@@ -83,30 +84,39 @@ def compose(state: str, framing: str, context: dict[str, str]) -> str:
 
 API_URL = "https://api.anthropic.com/v1/messages"
 API_VERSION = "2023-06-01"
+OAUTH_BETA = "oauth-2025-04-20"     # sent with a sign-in token (dmc:provider-auth, outcome sign-in)
 
 
-def http_post(body: dict, key: str, url: str = API_URL, timeout: float = 60.0) -> dict:
+def auth_headers(env: dict) -> dict[str, str]:
+    """The authentication headers dmc:provider-auth selects from the runner's environment: a sign-in token
+    (`ANTHROPIC_AUTH_TOKEN`, e.g. from `ant auth print-credentials --access-token`) as a Bearer with the OAuth beta
+    header, else an API key (`ANTHROPIC_API_KEY`). Raises when neither is set."""
+    if env.get("ANTHROPIC_AUTH_TOKEN"):
+        return {"authorization": "Bearer " + env["ANTHROPIC_AUTH_TOKEN"], "anthropic-beta": OAUTH_BETA}
+    if env.get("ANTHROPIC_API_KEY"):
+        return {"x-api-key": env["ANTHROPIC_API_KEY"]}
+    raise RuntimeError("AnthropicProvider: neither ANTHROPIC_AUTH_TOKEN nor ANTHROPIC_API_KEY is set")
+
+
+def http_post(body: dict, auth: dict[str, str], url: str = API_URL, timeout: float = 60.0) -> dict:
     """One Messages API request with the standard library; raises on an HTTP or network error."""
     import json, urllib.request
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
-                                 headers={"x-api-key": key, "anthropic-version": API_VERSION,
-                                          "content-type": "application/json"})
+                                 headers={**auth, "anthropic-version": API_VERSION, "content-type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode())
 
 
 class AnthropicProvider:
     """A Claude model words the framing sentence through the Messages API (stdlib HTTP, plan #3 revision 2); the
-    template is the fallback on a refusal, an error or an empty reply, so the walk never stalls. The key is read from
-    `ANTHROPIC_API_KEY` in the environment of whoever runs it, never from a file. `usage` collects (input, output)
+    template is the fallback on a refusal, an error or an empty reply, so the walk never stalls. Authentication is the
+    runner's own, read from its environment by `auth_headers` (dmc:provider-auth), never from a file. `usage` collects (input, output)
     tokens per call. `post` is injectable so tests run offline."""
     def __init__(self, model: str, effort: str = "low", max_tokens: int = 1024, post=None) -> None:
         if post is None:
             import os
-            key = os.environ.get("ANTHROPIC_API_KEY", "")
-            if not key:
-                raise RuntimeError("AnthropicProvider: ANTHROPIC_API_KEY is not set")
-            post = lambda body: http_post(body, key)
+            auth = auth_headers(dict(os.environ))
+            post = lambda body: http_post(body, auth)
         self.post, self.model, self.effort, self.max_tokens = post, model, effort, max_tokens
         self.usage: list[tuple[int, int]] = []
         self.fallbacks = 0

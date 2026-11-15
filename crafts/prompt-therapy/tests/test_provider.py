@@ -60,11 +60,19 @@ class AnthropicProviderTests(unittest.TestCase):
         self.assertEqual((body["model"], body["system"], body["output_config"]), ("claude-haiku-5-5", provider.SYSTEM, {"effort": "low"}))
         self.assertLessEqual(body["max_tokens"], 2048)
 
-    def test_no_key_refuses_before_any_request(self):
+    def test_no_credential_refuses_before_any_request(self):
         import os, unittest.mock
-        with unittest.mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}):
+        with unittest.mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "", "ANTHROPIC_AUTH_TOKEN": ""}):
             with self.assertRaises(RuntimeError):
                 provider.AnthropicProvider("m")
+
+    def test_auth_headers_follow_dmc_provider_auth(self):
+        """Sign-in: a Bearer token with the OAuth beta header, preferred over a key; else the key; else refused."""
+        h = provider.auth_headers({"ANTHROPIC_AUTH_TOKEN": "tok", "ANTHROPIC_API_KEY": "key"})
+        self.assertEqual(h, {"authorization": "Bearer tok", "anthropic-beta": provider.OAUTH_BETA})
+        self.assertEqual(provider.auth_headers({"ANTHROPIC_API_KEY": "key"}), {"x-api-key": "key"})
+        with self.assertRaises(RuntimeError):
+            provider.auth_headers({})
 
     def test_compose_keeps_the_anchor_and_what_was_kept(self):
         self.assertIn("I answer for the result.", provider.compose("anchor", "It seems to lead here.", {"anchor": "I answer for the result."}))

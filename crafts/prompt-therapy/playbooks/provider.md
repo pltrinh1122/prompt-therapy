@@ -10,8 +10,8 @@ A Select provider row; a re-selection signal from `operate.md` (a failed run, a 
 ## Steps
 1. **Adapters.** Each candidate is an adapter behind the interface, built under `build.md`, with its unit test on a
    recorded response, offline.
-2. **Credential.** Each candidate's key is a saved credential for its host, asked for through the credential request,
-   never pasted into the chat or written to a file.
+2. **Authentication.** How the run authenticates is decided by `dmc:provider-auth`: a person's evaluation signs in on
+   their own machine, and no secret is ever pasted into the chat or written to a file.
 3. **Run the adversarial set** (`test.md`) against each candidate.
 4. **Price.** A comparison, dated, per conversation of the harness's median length, from each provider's published
    prices, with its sources.
@@ -21,6 +21,7 @@ A Select provider row; a re-selection signal from `operate.md` (a failed run, a 
 | judgement | record |
 |---|---|
 | which provider serves, and when to choose again | `dmc:provider-choice` |
+| how a run authenticates to the provider | `dmc:provider-auth` |
 
 ## Questions
 The row's plan and done questions. Spending on a provider is the operator's, in words: a run that costs money is named

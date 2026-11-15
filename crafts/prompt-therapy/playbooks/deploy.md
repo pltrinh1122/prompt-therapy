@@ -8,7 +8,7 @@ action classed and recorded (Rule-8), and the service is a server instance with 
 A Deploy row, once the provider gate has closed.
 
 ## Steps
-1. **Choose where** by `dmc:deploy-target`.
+1. **Choose where** by `dmc:deploy-target`, and how the service authenticates there by `dmc:provider-auth`.
 2. **Write the run-book** at `<runbooks>/prompt-therapy.md` (`dyad runbook new prompt-therapy`): its supervisor, its
    health command and pass criterion, its service levels and budget for `operate.md`, its deletion, backup, rollback,
    stop and retire commands.
@@ -23,6 +23,7 @@ A Deploy row, once the provider gate has closed.
 |---|---|
 | where the service runs | `dmc:deploy-target` |
 | whether a build may be deployed | `dmc:deploy-readiness` |
+| how the deployed service authenticates to its provider | `dmc:provider-auth` |
 | each deploy step's class | `dmc:host-action-class` |
 | whether the deploy is done | `dmc:deployed-done` |
 
