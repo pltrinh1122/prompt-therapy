@@ -1,0 +1,9 @@
+[
+  {"id": "false-claim", "record": 696, "entry": 5, "bullet": null, "canon": ["S1"]},
+  {"id": "rabbit-hole", "record": 696, "entry": 10, "bullet": 1, "canon": ["S4"]},
+  {"id": "prompted-not-intended", "record": 696, "entry": 10, "bullet": 2, "canon": ["S5"]},
+  {"id": "lost-track", "record": 696, "entry": 11, "bullet": 1, "canon": ["S6"]},
+  {"id": "rules-sometimes", "record": 696, "entry": 12, "bullet": 1, "canon": ["S7"]},
+  {"id": "counter-to-what-i-know", "record": 696, "entry": 22, "bullet": 1, "canon": ["S2", "S1"]},
+  {"id": "stale", "record": 696, "entry": 22, "bullet": 2, "canon": ["S3", "S1"]}
+]
