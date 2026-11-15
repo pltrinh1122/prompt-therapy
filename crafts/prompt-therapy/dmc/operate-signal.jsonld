@@ -1,0 +1,85 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/operate-signal",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "operate-signal",
+  "name": "What a signal from the running service is",
+  "description": "What a signal from the running service, its users or its providers is, so it reaches the decision that handles it.",
+  "dyad:decides": "Which kind of signal is this?",
+  "dyad:inputs": [
+    "the signal: a health event, a user's request, a cost reading, a provider's status, a canon change",
+    "its source",
+    "whether it touches a conversation or a person"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "health",
+      "name": "Health or service level",
+      "dyad:when": "a health command fails, or a service level is missed",
+      "dyad:then": "dmc:service-level"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "user",
+      "name": "A user's request",
+      "dyad:when": "a user asks to delete, complains, or raises a safety concern",
+      "dyad:then": "dmc:user-request"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "retention-due",
+      "name": "Retention due",
+      "dyad:when": "a conversation's session ended or a kept record's period ran out",
+      "dyad:then": "dmc:retention"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "cost",
+      "name": "Spend",
+      "dyad:when": "a cost reading arrives or a budget threshold is crossed",
+      "dyad:then": "dmc:service-cost"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "outage",
+      "name": "The provider fails",
+      "dyad:when": "the serving provider errors, times out or is unavailable",
+      "dyad:then": "dmc:provider-outage"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "canon",
+      "name": "The canon changed",
+      "dyad:when": "dyad-system's canon moved past the pin",
+      "dyad:then": "dmc:feedback-route"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "incident",
+      "name": "An unplanned outcome",
+      "dyad:when": "anything the run-book does not name happened",
+      "dyad:then": "dmc:incident"
+    }
+  ],
+  "dyad:precedence": "a signal touching a person or a conversation is handled as user or retention-due first, whatever else it is",
+  "dyad:default": "incident",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/operate.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

@@ -1,0 +1,58 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/spec-first",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "spec-first",
+  "name": "Whether a code change needs a specification change first",
+  "description": "Whether a change to the service's code is covered by the accepted specifications or needs one changed first.",
+  "dyad:decides": "Does this code change need a specification change before it is built?",
+  "dyad:inputs": [
+    "the code change",
+    "the specification sections it claims to meet",
+    "the specifications as accepted on main"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "covered",
+      "name": "Covered by the specifications",
+      "dyad:when": "every behaviour the change adds or alters is what a cited section already says",
+      "dyad:then": "build it; its docstring or test names the sections it meets"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "spec-change",
+      "name": "A specification changes first",
+      "dyad:when": "it adds or alters behaviour no section states, or contradicts one",
+      "dyad:then": "stop the build; the specification changes first, under a Specify row"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "internal",
+      "name": "Internal only",
+      "dyad:when": "it changes no behaviour a specification states: a refactor, a test helper, a performance fix",
+      "dyad:then": "build it; no section is cited, and the evidence says it is internal"
+    }
+  ],
+  "dyad:precedence": "spec-change whenever a user-facing behaviour is in doubt",
+  "dyad:default": "spec-change",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/build.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/architecture.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

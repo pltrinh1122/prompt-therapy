@@ -1,0 +1,85 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/lifecycle-phase",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "lifecycle-phase",
+  "name": "Lifecycle phase of a piece of work",
+  "description": "Which lifecycle phase of Prompt Therapy a prompt, a finding or a row's work belongs to, so it runs under that phase's play-book.",
+  "dyad:decides": "Which phase does this work belong to: specify, build, test, select provider, deploy, operate or evolve?",
+  "dyad:inputs": [
+    "the work's statement: the prompt, the finding or the row's definition of done",
+    "what it changes: a product specification, the service's code or tests, the provider, the running service, or nothing yet",
+    "the phase the product is in now, as the lifecycle's last closed exit gate shows it"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "specify",
+      "name": "Specify the product",
+      "dyad:when": "it changes what the product must do or how it is shaped: a requirement, the architecture or the conversation design",
+      "dyad:then": "the Specify row the operator prompts for, editing docs/ as its plan names (the specification play-book waits on the upstream specs craft)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "build",
+      "name": "Build to the specifications",
+      "dyad:when": "it changes the service's code to meet specifications already accepted",
+      "dyad:then": "run playbooks/build.md"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "test",
+      "name": "Test against the never rules",
+      "dyad:when": "it adds or changes a test, a fixture or the harness",
+      "dyad:then": "run playbooks/test.md"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "provider",
+      "name": "Select or re-select the provider",
+      "dyad:when": "it chooses, changes or re-prices the model provider",
+      "dyad:then": "run playbooks/provider.md"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "deploy",
+      "name": "Deploy a build",
+      "dyad:when": "it puts a build on a host, or changes where or how it is hosted",
+      "dyad:then": "run playbooks/deploy.md"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "operate",
+      "name": "Operate the running service",
+      "dyad:when": "it is a signal from the running service or its users, or an act on the running service",
+      "dyad:then": "run playbooks/operate.md"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "evolve",
+      "name": "Evolve from what operation taught",
+      "dyad:when": "it is a finding from operation or from a user that may change the specifications, the canon or the backlog",
+      "dyad:then": "run playbooks/evolve.md"
+    }
+  ],
+  "dyad:precedence": "A piece of work that changes a specification is specify first, whatever else it touches: the specification is the referent and changes before the code that refers to it (Rule-1, referent before referrer). Work spanning several phases is split into one row per phase.",
+  "dyad:default": "specify: when the work's phase cannot be read, its specification is read first",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/product-development.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

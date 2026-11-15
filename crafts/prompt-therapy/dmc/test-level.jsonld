@@ -1,0 +1,58 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/test-level",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "test-level",
+  "name": "Which level a test belongs to",
+  "description": "At which level a check of the service is written, so each level stays fast and each never rule is checked where it can fail.",
+  "dyad:decides": "Is this a unit test, a conversation test or an adversarial test?",
+  "dyad:inputs": [
+    "what the test checks",
+    "the module or the walk it exercises",
+    "whether its input is a whole conversation"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "unit",
+      "name": "A unit test",
+      "dyad:when": "it checks one module's behaviour from its own inputs: the canon parser, the provider, the store",
+      "dyad:then": "tests/test_<module>.py, one file per module (dmc:test-mapping)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "conversation",
+      "name": "A whole-conversation test",
+      "dyad:when": "it checks a scripted conversation end to end against the fake provider and the fixture canon",
+      "dyad:then": "a fixture under tests/fixtures/conversations/, run by the harness in tests/test_walk.py"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "adversarial",
+      "name": "An adversarial conversation test",
+      "dyad:when": "it tries to make a walk diagnose, name a person or keep without consent: a reworded, combined, hostile or off-topic variant of a real symptom",
+      "dyad:then": "a fixture of the adversarial set, its source cited (dmc:fixture-source), run by the harness; the walk must hold every never rule"
+    }
+  ],
+  "dyad:precedence": "a never rule is always checked at the adversarial level, whatever else checks it",
+  "dyad:default": "unit",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/test.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/architecture.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

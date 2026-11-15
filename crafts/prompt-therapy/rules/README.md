@@ -4,3 +4,4 @@ One file per rule, any form; each opens with the core Rule whose kernel reads it
 
 | rule | read by | what it holds |
 |------|---------|---------------|
+| `product-development.md` | the play-books, the decision records | the lifecycle, judgements as records |

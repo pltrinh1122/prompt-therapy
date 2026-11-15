@@ -1,0 +1,65 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/user-request",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "user-request",
+  "name": "What is done with a user's request",
+  "description": "How the service answers a user's request about their own conversation, a complaint or a safety concern.",
+  "dyad:decides": "Which kind of request is this, and what is done?",
+  "dyad:inputs": [
+    "the request",
+    "the conversation or kept record it names, by its deletion code or session"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "delete",
+      "name": "Delete",
+      "dyad:when": "the user asks to delete a conversation or a kept record",
+      "dyad:then": "delete it at once through the store and tell the user; no copy is kept anywhere"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "complaint",
+      "name": "A complaint",
+      "dyad:when": "the user says the service did something wrong",
+      "dyad:then": "record what the service did, never who the user is; report it as an evolve finding (dmc:feedback-route)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "safety",
+      "name": "A safety concern",
+      "dyad:when": "the user says they are at risk or in crisis",
+      "dyad:then": "the service says again it is not therapy and points to emergency help; nothing is kept; the operator is told that a concern was raised, never by whom"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "other",
+      "name": "Anything else",
+      "dyad:when": "a question about the service or its retention",
+      "dyad:then": "answer from the PRD's retention text; nothing is kept"
+    }
+  ],
+  "dyad:precedence": "safety over delete over complaint over other",
+  "dyad:default": "other",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/operate.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/prd.md",
+    "docs/ux.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}
