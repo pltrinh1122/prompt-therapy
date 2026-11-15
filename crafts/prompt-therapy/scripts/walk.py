@@ -28,7 +28,12 @@ CAPITAL = re.compile(r"(?<![.!?]\s)(?<!^)\b[A-Z][a-z]+\b")
 NOT_NAMES = {"I", "AI", "It", "The", "A", "An", "My", "We", "They", "He", "She", "When", "Then", "But", "And", "So"}
 SAFE = "Let us keep going. Tell me a little more, in your own words."
 STOP = {"the", "and", "for", "but", "not", "was", "were", "are", "has", "had", "have", "with", "that", "this", "when",
-        "what", "its", "even", "about", "from", "into", "then", "than", "they", "them", "you", "your", "agent"}
+        "what", "its", "even", "about", "from", "into", "then", "than", "they", "them", "you", "your", "agent",
+        "can", "could", "would", "will", "does", "did", "how", "who", "why", "many", "much", "more", "most", "one",
+        "some", "any", "all", "just", "like", "very", "also", "only", "other", "others", "out", "own", "get", "got",
+        "someone", "please", "tell", "write", "make", "made", "know", "say", "says", "said", "way", "time", "times", "thing"}
+SENTENCE = re.compile(r"(?<=[.!?])\s+")
+NOT_SAID = "what you saw an AI agent do"   # the summary when every sentence would say back a diagnosis
 
 INVARIANTS = [   # crafts/syseng/rules/invariants.md
     ("starts-greet-ends-close", lambda: STATES[0] == "greet" and STATES[-1] == "close"),
@@ -36,6 +41,7 @@ INVARIANTS = [   # crafts/syseng/rules/invariants.md
     ("yes-no-disjoint", lambda: not (YES & NO)),
     ("at-most-three-options", lambda: MAX_OPTIONS == 3),
     ("stopwords-lowercase", lambda: all(w == w.lower() for w in STOP)),
+    ("fallback-summary-never-diagnoses", lambda: DIAGNOSIS.search(NOT_SAID) is None),
 ]
 dyadlib.enforce(INVARIANTS, __name__)
 
@@ -54,6 +60,22 @@ def redact(text: str) -> str:
 
 def words(text: str) -> set[str]:
     return {w for w in re.findall(r"[a-z]+", text.lower()) if len(w) > 2 and w not in STOP}
+
+
+def sayable(text: str) -> str:
+    """The user's words with every sentence that reads as a diagnosis left out, so the summary said back never
+    diagnoses (PRD Never); the words kept and matched are the user's own, unchanged."""
+    kept = [s for s in SENTENCE.split(text.strip()) if s and not DIAGNOSIS.search(s)]
+    return " ".join(kept) or NOT_SAID
+
+
+def entry_words(c: "canon_mod.Canon", e) -> set[str]:
+    """What an entry is matched on: its wording, and the name and text of each tree node it is rooted in."""
+    out = words(e.wording)
+    for tree, node in e.roots:
+        if tree in c.trees and node in c.trees[tree]:
+            out |= words(tree.replace("-", " ")) | words(c.trees[tree][node].text)
+    return out
 
 
 class Walk:
@@ -98,15 +120,17 @@ class Walk:
     def _on_greet(self, text: str, said: str) -> str:
         self.description = redact(text.strip())
         self.state = "describe"
-        return self._reply("describe", summary=self.description[:160].rstrip(".") + ".")
+        return self._reply("describe", summary=sayable(self.description)[:160].rstrip(".") + ".")
 
     def _on_describe(self, text: str, said: str) -> str:
         if said in NO:
             self.state = "greet"
             return self._say("Then tell me again, in your own words, what you saw it do.")
         self.state = "match"
-        ranked = sorted(self.canon.entries.values(), key=lambda e: -len(words(e.wording) & words(self.description)))
-        self.offered = [e for e in ranked if words(e.wording) & words(self.description)][:MAX_OPTIONS]
+        said_words = words(self.description)
+        score = {e.id: len(entry_words(self.canon, e) & said_words) for e in self.canon.entries.values()}
+        ranked = sorted(self.canon.entries.values(), key=lambda e: -score[e.id])
+        self.offered = [e for e in ranked if score[e.id]][:MAX_OPTIONS]
         lines = [f"{i}. {e.wording}" for i, e in enumerate(self.offered, 1)]
         lines.append(f"{len(self.offered) + 1}. None of these.")
         return self._reply("match", options="\n".join(lines))
@@ -115,11 +139,13 @@ class Walk:
         pick = _number(said, len(self.offered) + 1)
         if pick is None:
             return self._say("Please answer with one of the numbers.")
-        if pick > len(self.offered) or not self.offered[pick - 1].roots:
+        roots = [] if pick > len(self.offered) else [
+            (t, n) for t, n in self.offered[pick - 1].roots if t in self.canon.trees and n in self.canon.trees[t]]
+        if not roots:                     # none of these, or an entry no tree of this canon roots: what helps, then consent
             self.entry = self.offered[pick - 1] if pick <= len(self.offered) else None
             return self._helps()
         self.entry = self.offered[pick - 1]
-        self.tree, self.node = self.entry.roots[0]
+        self.tree, self.node = roots[0]
         self.trail = [self.node]
         return self._descend()
 

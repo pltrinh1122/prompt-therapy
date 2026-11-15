@@ -1,0 +1,18 @@
+{
+  "repo": "pltrinh1122/dyad-system",
+  "commit": "87daca88e8d56fe41ee4d0c2a0257280ada176e6",
+  "method": "provenance #699 entry 4: the seeds are the operator's own observed symptoms",
+  "files": {
+    "agent-corpus/d-work/provenance/696.md": "d5396f3440f129bb86324b8aef6def6563674934770395d157315f57d6efce60",
+    "agent-corpus/d-work/provenance/699.md": "f7161e74022f244ba4e7e5a5e533da81d71c98642cf49eefbea2082d448c7e83",
+    "site/lean-canvas/evaluation/why-tree.md": "efcc87a21ddd9363332cfcbd3a4dc32cbc59c71b352e04445dd7d51d5692d6a3",
+    "site/lean-canvas/intent-specification/why-tree.md": "430e6d2117d8bddea1ffd0acf5a2a72125d4a95d2cbb0a7b7dfbd7d157c2239f",
+    "site/lean-canvas/platform-ops/why-tree.md": "01de7e6b37c08bf71ef7e8f0a80997742a6a140cdd0cdb976db8fc34067d5e1e",
+    "site/lean-canvas/reference/cant-follow.md": "fd32177486bf27a51b5cbca98de9cc0990f4918d618aa8f9016aad9f78f3375c",
+    "site/lean-canvas/reference/hallucination.md": "ca6b4c20611c2227b6e884733562c9ee676542bae6d1ebf7c6edb10ec912d037",
+    "site/lean-canvas/reference/lose-track.md": "8f401589f1e744bcd25160395bbfa13a654f67a982958ec7f098ad6bd3b3e1e3",
+    "site/lean-canvas/reference/rules-sometimes.md": "7ce6cc54ee116b1f0a1fd6c5029124967c177ede2aa78c272db391eef8fa675a",
+    "site/lean-canvas/regulated-engineering/why-tree.md": "fc151389ff8d76ee14d8300218eb0c3417ececd182ded3718b4e61dcfc8888bb",
+    "site/lean-canvas/symptoms.md": "755959bceeb740bafa63e9d9d1bf569ce5d66f188bae032efd2496b1c44a857b"
+  }
+}
