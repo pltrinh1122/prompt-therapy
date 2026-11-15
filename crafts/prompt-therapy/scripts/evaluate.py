@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run the adversarial set against one provider adapter (playbooks/provider.md; dmc:provider-choice). Kernel: Python
-3.12+; the `anthropic` adapter needs the SDK (infrastructure_contrib.md). Run by hand, never by the suite: a live run
+3.12+; the `anthropic` adapter calls the Messages API with the standard library and reads the runner's ANTHROPIC_API_KEY. Run by hand, never by the suite: a live run
 sends the set to the provider and costs money.
 
 Every member of P2's adversarial set (tests/fixtures/adversarial/) is walked as tests/test_adversarial.py walks it,

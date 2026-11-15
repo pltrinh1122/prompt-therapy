@@ -11,7 +11,6 @@ The Prompt Therapy service: a chat in which a user brings what they saw an AI ag
 | `docs/` | the specifications: `prd.md`, `architecture.md`, `ux.md` |
 | `playbooks/` | the product lifecycle: `product-development.md` and one play-book per phase |
 | `dmc/` | the decision records the play-books cite, one per judgement |
-| `scripts/` | the service: walk engine, canon reader, provider (the fake adapter, and `AnthropicProvider` through the official SDK), store; `evaluate.py` runs the adversarial set against one adapter by hand (`evaluate.py anthropic <model> --budget <usd>`) |
-| `infrastructure_contrib.md`, `manifest_rules_contrib.txt` | the manifest row and token for the `anthropic` SDK |
+| `scripts/` | the service: walk engine, canon reader, provider (the fake adapter, and `AnthropicProvider`, the Messages API over the standard library), store; `evaluate.py` runs the adversarial set against one adapter by hand (`evaluate.py anthropic <model> --budget <usd>`) |
 | `tests/` | unit, whole-conversation and adversarial tests; the adversarial set (`tests/fixtures/adversarial/`) reads its seeds and the canon at a pinned dyad-system commit from the checkout `git config prompt-therapy.canon` names, and skips with one line without it |
 | `falsification/rules/` | one record per craft rule |

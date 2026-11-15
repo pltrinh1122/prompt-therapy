@@ -22,21 +22,14 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class _Block:
-    def __init__(self, text): self.type, self.text = "text", text
+def _r(text, stop="end_turn"):
+    return {"content": [{"type": "text", "text": text}], "stop_reason": stop, "usage": {"input_tokens": 100, "output_tokens": 20}}
 
-class _Response:
-    def __init__(self, text, stop="end_turn"):
-        self.content, self.stop_reason = [_Block(text)], stop
-        self.usage = type("U", (), {"input_tokens": 100, "output_tokens": 20})()
-
-class _Client:
-    """A recorded Messages client: returns the given texts in turn and records each request."""
+class _Post:
+    """A recorded Messages endpoint: returns the given responses in turn and records each request body."""
     def __init__(self, *responses): self.responses, self.calls = list(responses), []
-    @property
-    def messages(self): return self
-    def create(self, **kw):
-        self.calls.append(kw)
+    def __call__(self, body):
+        self.calls.append(body)
         r = self.responses.pop(0)
         if isinstance(r, Exception): raise r
         return r
@@ -45,28 +38,33 @@ class _Client:
 class AnthropicProviderTests(unittest.TestCase):
     """d-work #3: the model writes only the framing; the exact parts survive a model that drops them."""
     def test_the_greeting_always_opens_with_the_no_therapy_line(self):
-        p = provider.AnthropicProvider("claude-haiku-5-5", client=_Client(_Response("Hello there! What happened?")))
+        p = provider.AnthropicProvider("claude-haiku-5-5", post=_Post(_r("Hello there! What happened?")))
         self.assertTrue(p.reply("greet", {}).startswith(provider.NOT_THERAPY))
         self.assertEqual(p.usage, [(100, 20)])
 
     def test_options_and_yes_no_are_added_whatever_the_model_writes(self):
-        p = provider.AnthropicProvider("m", client=_Client(_Response("Which of these fits?"), _Response("May I keep it?")))
+        p = provider.AnthropicProvider("m", post=_Post(_r("Which of these fits?"), _r("May I keep it?")))
         self.assertTrue(p.reply("match", {"options": "1. a\n2. None of these."}).endswith("1. a\n2. None of these."))
         self.assertTrue(p.reply("consent", {}).endswith("(yes / no)"))
 
     def test_a_refusal_an_error_or_an_empty_reply_falls_back_to_the_template(self):
-        c = _Client(_Response("", "end_turn"), _Response("no", "refusal"), RuntimeError("down"))
-        p = provider.AnthropicProvider("m", client=c)
+        p = provider.AnthropicProvider("m", post=_Post(_r(""), _r("no", "refusal"), RuntimeError("down")))
         for _ in range(3):
             self.assertEqual(p.reply("greet", {}), provider.FakeProvider().reply("greet", {}))
         self.assertEqual(p.fallbacks, 3)
 
     def test_the_request_carries_the_system_rules_and_a_bound(self):
-        c = _Client(_Response("Thanks."))
-        provider.AnthropicProvider("claude-haiku-5-5", effort="low", client=c).reply("close", {"kept": "Nothing was kept."})
-        kw = c.calls[0]
-        self.assertEqual((kw["model"], kw["system"], kw["output_config"]), ("claude-haiku-5-5", provider.SYSTEM, {"effort": "low"}))
-        self.assertLessEqual(kw["max_tokens"], 2048)
+        post = _Post(_r("Thanks."))
+        provider.AnthropicProvider("claude-haiku-5-5", effort="low", post=post).reply("close", {"kept": "Nothing was kept."})
+        body = post.calls[0]
+        self.assertEqual((body["model"], body["system"], body["output_config"]), ("claude-haiku-5-5", provider.SYSTEM, {"effort": "low"}))
+        self.assertLessEqual(body["max_tokens"], 2048)
+
+    def test_no_key_refuses_before_any_request(self):
+        import os, unittest.mock
+        with unittest.mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}):
+            with self.assertRaises(RuntimeError):
+                provider.AnthropicProvider("m")
 
     def test_compose_keeps_the_anchor_and_what_was_kept(self):
         self.assertIn("I answer for the result.", provider.compose("anchor", "It seems to lead here.", {"anchor": "I answer for the result."}))
