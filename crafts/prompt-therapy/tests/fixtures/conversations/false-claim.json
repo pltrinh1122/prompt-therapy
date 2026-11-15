@@ -1,0 +1,4 @@
+{"name": "a false claim, walked to the anchor, kept with consent",
+ "turns": ["It stated something false as if it were true, and Dana believed it.", "yes", "1", "1", "yes", "yes"],
+ "states": ["describe", "match", "walk", "anchor", "consent", "close"],
+ "anchor": "D0.1.1", "kept": true, "canon": "S1"}

@@ -1,0 +1,4 @@
+{"name": "nothing matches; the walk still reaches consent, and nothing is kept",
+ "turns": ["The agent was rude about my spelling", "yes", "1", "no"],
+ "states": ["describe", "match", "consent", "close"],
+ "anchor": null, "kept": false, "canon": null}
