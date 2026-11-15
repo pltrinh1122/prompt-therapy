@@ -1,0 +1,2 @@
+# prompt-therapy craft: manifest tokens (same grammar as dyad/guards/infra/manifest_rules.txt)
+anthropic (Python SDK): import:anthropic

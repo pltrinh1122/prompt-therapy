@@ -2,9 +2,12 @@
 """Provider interface and its fake adapter (prompt-therapy craft; docs/architecture.md, Provider interface).
 Kernel: Python 3.12+, stdlib only.
 
-A provider words a reply for a walk state; it never chooses the state. P1 ships only `FakeProvider`, which fills a
-fixed template per state from the context it is given, so every test runs offline. P3 adds real adapters behind the
-same `reply(state, context)`; their keys are saved credentials, never files.
+A provider words a reply for a walk state; it never chooses the state. `FakeProvider` fills a fixed template per state
+from the context it is given, so every test runs offline, and it stays the default. `AnthropicProvider` (P3, d-work #3)
+has a Claude model write only the framing sentence of a reply; the adapter adds every part that must stay exact — the
+no-therapy line on the greeting, the numbered options, the anchor's words, the yes/no and what was kept — so a model
+can never drop or change one. The engine's never-rule check still runs on every outgoing line. Its key is a saved
+credential the network proxy injects, never a file.
 """
 import sys
 if sys.version_info < (3, 12):
@@ -31,8 +34,8 @@ TEMPLATES = {
 INVARIANTS = [   # crafts/syseng/rules/invariants.md
     ("greet-says-not-therapy", lambda: TEMPLATES["greet"].startswith(NOT_THERAPY)),
     ("templates-fit", lambda: all(len(t) < MAX_CHARS for t in TEMPLATES.values())),
+    ("a-guide-per-state", lambda: set(GUIDE) == set(TEMPLATES)),
 ]
-dyadlib.enforce(INVARIANTS, __name__)
 
 
 class Provider(Protocol):
@@ -45,6 +48,71 @@ class FakeProvider:
         return TEMPLATES[state].format_map(_Missing(context))[:MAX_CHARS]
 
 
+SYSTEM = (
+    "You write one or two short sentences for a chat that helps a person reflect on something an AI agent did. "
+    "This is not therapy and not professional advice. Plain words, at most two sentences, at most one question. "
+    "Never state a cause as the person's cause: a cause may only be asked about. Never say what the person feels. "
+    "Never use the words 'you are', 'you have', 'you feel', 'the cause is', 'the reason is', 'your problem', "
+    "'your issue'. Never name or repeat any person, company or place. Never promise to keep or store anything. "
+    "Do not list options or numbers; they are added after your sentence. Write only the sentence or sentences."
+)
+GUIDE = {   # what the model writes, per state; the exact parts are added by `compose`
+    "greet": "Greet the person and ask what they saw an AI agent do.",
+    "describe": "Say back, in one sentence, this summary of what they saw: {summary} Then ask if that is right.",
+    "match": "Say that what they described sounds like one of the options that follow, and ask which fits.",
+    "walk": "Ask why they think that happened, and say they may pick one of the possibilities that follow or say their own why.",
+    "anchor": "Say that their whys seem to lead to the point that follows, and ask whether it rings true.",
+    "helps": "Say, in one sentence, what helps: {helps}",
+    "consent": "Ask whether what they saw may be kept, in their words and without any name, to help improve this.",
+    "close": "Thank them briefly.",
+}
+
+
+def compose(state: str, framing: str, context: dict[str, str]) -> str:
+    """The reply: the model's framing plus the parts that must stay exact."""
+    framing = " ".join(framing.split())
+    exact = {"greet": lambda: NOT_THERAPY + " " + framing,
+             "match": lambda: framing + "\n" + context.get("options", ""),
+             "walk": lambda: framing + "\n" + context.get("options", ""),
+             "anchor": lambda: framing + "\n" + context.get("anchor", "") + " (yes / no)",
+             "describe": lambda: framing + " (yes / no)",
+             "consent": lambda: framing + " (yes / no)",
+             "close": lambda: framing + " " + context.get("kept", "")}
+    return exact.get(state, lambda: framing)()[:MAX_CHARS]
+
+
+class AnthropicProvider:
+    """A Claude model words the framing sentence through the official SDK; the template is the fallback on a refusal,
+    an error or an empty reply, so the walk never stalls. `usage` collects (input, output) tokens per call."""
+    def __init__(self, model: str, effort: str = "low", max_tokens: int = 1024, client=None) -> None:
+        if client is None:
+            import anthropic   # the one third-party import (infrastructure_contrib.md), loaded only when used
+            client = anthropic.Anthropic()
+        self.client, self.model, self.effort, self.max_tokens = client, model, effort, max_tokens
+        self.usage: list[tuple[int, int]] = []
+        self.fallbacks = 0
+
+    def reply(self, state: str, context: dict[str, str]) -> str:
+        prompt = GUIDE[state].format_map(_Missing(context))
+        try:
+            r = self.client.messages.create(model=self.model, max_tokens=self.max_tokens, system=SYSTEM,
+                                            output_config={"effort": self.effort},
+                                            messages=[{"role": "user", "content": prompt}])
+        except Exception:                       # noqa: BLE001 — an API or network failure falls back, counted
+            self.fallbacks += 1
+            return FakeProvider().reply(state, context)
+        u = getattr(r, "usage", None)
+        self.usage.append((getattr(u, "input_tokens", 0) or 0, getattr(u, "output_tokens", 0) or 0))
+        text = "".join(b.text for b in r.content if getattr(b, "type", "") == "text").strip()
+        if getattr(r, "stop_reason", "") == "refusal" or not text:
+            self.fallbacks += 1
+            return FakeProvider().reply(state, context)
+        return compose(state, text, context)
+
+
 class _Missing(dict):
     def __missing__(self, key: str) -> str:
         return ""
+
+
+dyadlib.enforce(INVARIANTS, __name__)
