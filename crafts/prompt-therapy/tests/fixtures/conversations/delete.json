@@ -1,0 +1,4 @@
+{"name": "delete at any time",
+ "turns": ["It stated something false as if it were true", "delete"],
+ "states": ["describe", "close"],
+ "anchor": null, "kept": false, "canon": null}

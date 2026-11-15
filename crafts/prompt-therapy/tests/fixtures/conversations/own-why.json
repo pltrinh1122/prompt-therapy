@@ -1,0 +1,4 @@
+{"name": "the user's own why, then no consent",
+ "turns": ["It gave way when I pushed back, even though it was right", "yes", "1", "because it wants to please me", "no", "no"],
+ "states": ["describe", "match", "walk", "anchor", "consent", "close"],
+ "anchor": "D0.1.1", "kept": false, "canon": null}
