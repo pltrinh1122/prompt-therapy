@@ -1,0 +1,59 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/deploy-target",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "deploy-target",
+  "name": "Where the service runs",
+  "description": "Where Prompt Therapy is hosted, judged on what the PRD requires of conversations and on cost.",
+  "dyad:decides": "Which kind of host runs the service?",
+  "dyad:inputs": [
+    "the PRD's retention and deletion requirements",
+    "the operator's answers to the PRD's open questions",
+    "each candidate's cost, region and what it keeps (logs, backups)",
+    "who holds the host's credentials"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "operator-host",
+      "name": "A host the operator controls",
+      "dyad:when": "a host whose logs and backups the operator controls, and where deletion is provable",
+      "dyad:then": "deploy there; its run-book holds the deletion and backup commands"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "managed",
+      "name": "A managed platform",
+      "dyad:when": "a platform whose retention of logs, backups and request bodies meets the PRD and whose deletion is documented",
+      "dyad:then": "deploy there; its terms are cited in the run-book"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "not-yet",
+      "name": "Not yet",
+      "dyad:when": "no candidate meets the PRD's retention and deletion, or an open question the choice needs is unanswered",
+      "dyad:then": "no deploy; the missing answer is asked as its own question"
+    }
+  ],
+  "dyad:precedence": "retention and deletion before cost",
+  "dyad:default": "not-yet",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/deploy.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/prd.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

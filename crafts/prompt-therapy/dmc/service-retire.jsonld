@@ -1,0 +1,49 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/service-retire",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "service-retire",
+  "name": "Whether to retire the service",
+  "description": "Whether the running service is retired, and how its stores are emptied.",
+  "dyad:decides": "Keep running, or retire?",
+  "dyad:inputs": [
+    "the operator's words",
+    "the service's state",
+    "the kept records and their retention"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "keep-running",
+      "name": "Keep running",
+      "dyad:when": "the operator has not asked to retire it",
+      "dyad:then": "nothing"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "retire",
+      "name": "Retire",
+      "dyad:when": "the operator asks in words to retire it",
+      "dyad:then": "stop the service by the run-book, delete every conversation and kept record, and record the deletion as destructive host actions, each asked on its own"
+    }
+  ],
+  "dyad:default": "keep-running",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/operate.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

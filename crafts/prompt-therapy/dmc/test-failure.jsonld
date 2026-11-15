@@ -1,0 +1,64 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/test-failure",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "test-failure",
+  "name": "What a failing test means",
+  "description": "What a failing test of the service tells, so the fix lands where the fault is.",
+  "dyad:decides": "Is this failure a product defect, a specification gap, a fixture defect or a moved canon?",
+  "dyad:inputs": [
+    "the failing test and its output",
+    "the specification sections the test cites",
+    "the canon pin the fixture was written against"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "defect",
+      "name": "A product defect",
+      "dyad:when": "the code does what no specification allows; a never rule broken is always this",
+      "dyad:then": "fix the code under playbooks/build.md; the test stays as it is"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "spec-gap",
+      "name": "A specification gap",
+      "dyad:when": "the test expects behaviour no section states, or two sections disagree",
+      "dyad:then": "a Specify row changes the specification; the test waits on the accepted text"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "fixture",
+      "name": "A fixture defect",
+      "dyad:when": "the fixture or its expected states are wrong against the accepted specifications",
+      "dyad:then": "correct the fixture, the correction named in the evidence; never to make a never-rule failure pass"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "canon-moved",
+      "name": "The canon moved",
+      "dyad:when": "the fixture's canon pin and the reader's pin differ, or dyad-system's canon changed the matched tree",
+      "dyad:then": "re-pin under a reviewed change and re-run; a changed tree is an evolve finding (dmc:feedback-route)"
+    }
+  ],
+  "dyad:precedence": "defect whenever a never rule is broken; no other outcome may absorb it",
+  "dyad:default": "defect",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/test.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

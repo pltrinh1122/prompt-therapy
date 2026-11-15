@@ -1,0 +1,57 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/service-cost",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "service-cost",
+  "name": "Spend against budget",
+  "description": "Whether the service's spend on hosting and its provider stays within the budget the operator set, and what follows.",
+  "dyad:decides": "Is the spend within budget?",
+  "dyad:inputs": [
+    "the period's spend by component",
+    "the budget the operator set, in the run-book",
+    "the conversations served in the period"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "within",
+      "name": "Within budget",
+      "dyad:when": "the period's spend is under the budget",
+      "dyad:then": "nothing; the reading is an event"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "near",
+      "name": "Near the budget",
+      "dyad:when": "the spend crosses the warning share of the budget the run-book states",
+      "dyad:then": "report it with the spend per conversation; propose a provider re-selection if a cheaper adapter passes (dmc:provider-choice)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "over",
+      "name": "Over budget",
+      "dyad:when": "the spend reaches the budget",
+      "dyad:then": "report it; the service is limited or paused by the run-book only on the operator's words"
+    }
+  ],
+  "dyad:precedence": "over over near over within",
+  "dyad:default": "near",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/operate.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

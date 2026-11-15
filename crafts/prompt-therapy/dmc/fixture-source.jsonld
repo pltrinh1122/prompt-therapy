@@ -1,0 +1,65 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/fixture-source",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "fixture-source",
+  "name": "What a test fixture may hold",
+  "description": "Which words a test fixture may carry, so no user's conversation and no person ever enters the repository.",
+  "dyad:decides": "May these words enter a fixture, and how?",
+  "dyad:inputs": [
+    "the words",
+    "where they came from: written for the test, an operator prompt in a provenance record, a user of the service",
+    "whether they name a person or carry personal context"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "synthetic",
+      "name": "Synthetic words",
+      "dyad:when": "written for the test and naming no real person",
+      "dyad:then": "the fixture holds them as written"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "by-reference",
+      "name": "The operator's own prompt, by reference",
+      "dyad:when": "an operator prompt kept in a public provenance record",
+      "dyad:then": "the fixture cites the record and entry and the harness reads the words at a pinned commit; the words are never copied into this repository"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "variant",
+      "name": "A variant of a cited prompt",
+      "dyad:when": "a rewording, combination, hostile or off-topic form of a cited prompt",
+      "dyad:then": "the fixture holds the variant, written for the test, and cites the entry it varies"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "refused",
+      "name": "Refused",
+      "dyad:when": "a user's words from the service, or words that name a person, a client, an employer or private context",
+      "dyad:then": "never written to a fixture; a test needing that shape uses a synthetic stand-in"
+    }
+  ],
+  "dyad:precedence": "refused over every other outcome when any condition of refused holds",
+  "dyad:default": "refused",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/test.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/prd.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

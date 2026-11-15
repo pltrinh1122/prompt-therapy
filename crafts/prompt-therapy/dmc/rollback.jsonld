@@ -1,0 +1,57 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/rollback",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "rollback",
+  "name": "Roll back or fix forward",
+  "description": "Whether a fault in a deployed build is met by returning to the last good build or by deploying a fix.",
+  "dyad:decides": "Roll back, or fix forward?",
+  "dyad:inputs": [
+    "the fault",
+    "the last build whose health passed and whose adversarial run passed",
+    "the fix's state: built, tested, not yet"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "roll-back",
+      "name": "Roll back",
+      "dyad:when": "a never rule is broken, or the service is down and a last good build exists",
+      "dyad:then": "redeploy the last good build by the run-book; the fix follows as its own row"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "fix-forward",
+      "name": "Fix forward",
+      "dyad:when": "the fault is degraded service only, and a fix has passed the whole adversarial set",
+      "dyad:then": "deploy the fix through dmc:deploy-readiness"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "stop",
+      "name": "Stop the service",
+      "dyad:when": "a never rule is broken and no last good build exists",
+      "dyad:then": "stop the service by the run-book until a fix is ready"
+    }
+  ],
+  "dyad:precedence": "stop over roll-back over fix-forward when a never rule is broken",
+  "dyad:default": "roll-back",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/operate.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

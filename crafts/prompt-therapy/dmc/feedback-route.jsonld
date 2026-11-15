@@ -1,0 +1,65 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/feedback-route",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "feedback-route",
+  "name": "Where a finding from operation goes",
+  "description": "Where a finding from the running service or its users goes, so it changes the right thing: the specifications, the canon, the code or nothing.",
+  "dyad:decides": "Where does this finding go?",
+  "dyad:inputs": [
+    "the finding, de-identified",
+    "the canon entry and tree it touches, if any",
+    "the specifications it touches, if any"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "spec",
+      "name": "A specification change here",
+      "dyad:when": "it shows a requirement, the architecture or the conversation design is wrong or missing",
+      "dyad:then": "propose a Specify row that changes the specification it names"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "canon-handup",
+      "name": "A hand-up to the canon",
+      "dyad:when": "it shows a symptom, cause or anchor dyad-system's canon lacks or words wrongly, from a consented, de-identified record",
+      "dyad:then": "propose a hand-up to dyad-system, split by dmc:intake-split; sent only on the operator's words, and only once dyad-system's Intake has the observation shape"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "bug",
+      "name": "A defect",
+      "dyad:when": "the code does what the accepted specifications forbid",
+      "dyad:then": "propose a row under playbooks/build.md, with a test that fails first"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "drop",
+      "name": "Out of scope",
+      "dyad:when": "it asks for what the PRD puts out of scope, or for nothing the product does",
+      "dyad:then": "record it as read and propose nothing"
+    }
+  ],
+  "dyad:precedence": "a finding that names a person is de-identified before any route; one that cannot be is dropped",
+  "dyad:default": "spec",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/evolve.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/prd.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

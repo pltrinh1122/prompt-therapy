@@ -1,0 +1,59 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/provider-choice",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "provider-choice",
+  "name": "Which model provider serves the walk",
+  "description": "Which provider adapter the service uses, chosen on evidence, and when the choice is made again.",
+  "dyad:decides": "Which provider serves, and is it time to choose again?",
+  "dyad:inputs": [
+    "the adapters behind the provider interface",
+    "each adapter's result on the full adversarial set",
+    "a price comparison, dated, per conversation of the harness's median length",
+    "the provider's terms on keeping or training on what it is sent"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "choose",
+      "name": "Choose the cheapest that passes",
+      "dyad:when": "an adapter passes the whole adversarial set and its terms keep nothing it is sent beyond the request",
+      "dyad:then": "configure it; its key is a saved credential, asked for by request, never a file or a chat paste; the dated comparison is the row's evidence"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "none-passes",
+      "name": "None passes",
+      "dyad:when": "no adapter passes the whole adversarial set, or none has acceptable terms",
+      "dyad:then": "no provider serves; the service stays on the fake provider and the finding is reported"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "re-select",
+      "name": "Choose again",
+      "dyad:when": "the serving adapter fails a run of the adversarial set, its price or terms change, or a cheaper adapter is added",
+      "dyad:then": "run the choice again from the start; the serving adapter keeps serving only while it still passes"
+    }
+  ],
+  "dyad:precedence": "passing the adversarial set and acceptable terms before price; price decides only among those that pass",
+  "dyad:default": "none-passes",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/provider.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/architecture.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

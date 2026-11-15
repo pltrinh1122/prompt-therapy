@@ -1,0 +1,58 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/provider-outage",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "provider-outage",
+  "name": "What is done when the provider fails",
+  "description": "What the service does when its serving provider errors, times out or is unavailable.",
+  "dyad:decides": "Wait, fall back, or close the conversation?",
+  "dyad:inputs": [
+    "the error and its duration",
+    "whether a second adapter passed the adversarial set",
+    "the conversation's state"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "retry",
+      "name": "Retry once",
+      "dyad:when": "a single error or timeout",
+      "dyad:then": "retry once within the provider interface's timeout"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "fallback",
+      "name": "Fall back",
+      "dyad:when": "the outage lasts and a second adapter has passed the whole adversarial set",
+      "dyad:then": "serve from the second adapter; report the switch"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "close-gently",
+      "name": "Close gently",
+      "dyad:when": "the outage lasts and no second adapter has passed",
+      "dyad:then": "tell the user the service cannot answer now, keep nothing, and end the session"
+    }
+  ],
+  "dyad:precedence": "never fall back to an adapter that has not passed the adversarial set",
+  "dyad:default": "close-gently",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/operate.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/architecture.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

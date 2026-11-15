@@ -1,0 +1,61 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/deploy-readiness",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "deploy-readiness",
+  "name": "Whether a build may be deployed",
+  "description": "Whether a build of the service may go onto its host, so nothing reaches users that the never rules or the PRD forbid.",
+  "dyad:decides": "May this build be deployed?",
+  "dyad:inputs": [
+    "the build's evidence block",
+    "the adversarial set's result on this build with the serving provider",
+    "the specifications' drift check",
+    "the PRD's open questions and their answers",
+    "the run-book and its health command",
+    "the provider credential's state"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "ready",
+      "name": "Ready",
+      "dyad:when": "every check passes, the adversarial set passes with the serving provider, the specifications are coherent, every open question the deploy depends on is answered, and the run-book and health command exist",
+      "dyad:then": "the deploy may be proposed; it reaches users, so the operator is asked for it in words"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "blocked",
+      "name": "Blocked",
+      "dyad:when": "any condition of ready fails",
+      "dyad:then": "no deploy; the failing condition is reported and becomes the row's next act"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "unanswered",
+      "name": "An open question stands",
+      "dyad:when": "every check passes and an open question the deploy depends on (retention period, public or invite-only) has no answer",
+      "dyad:then": "ask the question; deploy only after its answer is written into the PRD"
+    }
+  ],
+  "dyad:precedence": "blocked over unanswered over ready",
+  "dyad:default": "blocked",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/deploy.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md",
+    "docs/prd.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

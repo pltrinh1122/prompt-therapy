@@ -1,0 +1,57 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/phase-gate",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "phase-gate",
+  "name": "Lifecycle exit gate",
+  "description": "Whether a lifecycle phase's exit gate holds, so the next phase may start on its output.",
+  "dyad:decides": "Does this phase's exit gate hold?",
+  "dyad:inputs": [
+    "the phase's exit conditions, as its play-book's Evidence section lists them",
+    "the evidence each condition names: a done row, a check line, a run-book event, an accepted specification",
+    "whether the specifications the phase relied on still say what it built to"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "open",
+      "name": "The gate holds",
+      "dyad:when": "every exit condition of the phase has its evidence, observed, and the specifications have not drifted",
+      "dyad:then": "the next phase may start; the lifecycle records the gate as closed in the phase's done row"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "shut",
+      "name": "The gate does not hold",
+      "dyad:when": "an exit condition has no evidence, or its evidence was not observed, or the specifications drifted",
+      "dyad:then": "the phase stays open; the missing condition is reported and becomes the next act of the phase's row"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "waived",
+      "name": "Waived by the operator",
+      "dyad:when": "the operator, asked in words, accepts a named condition as unmet",
+      "dyad:then": "the next phase may start; the waiver is a disposition recorded on the row, and the unmet condition is filed as a backlog row"
+    }
+  ],
+  "dyad:precedence": "shut over open while any condition lacks evidence; waived only on the operator's own words",
+  "dyad:default": "shut",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/product-development.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}

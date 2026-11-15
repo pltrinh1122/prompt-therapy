@@ -1,0 +1,64 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/service-level",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "service-level",
+  "name": "A missed service level and what follows",
+  "description": "What is done when the running service misses a level the operator set, judged by its health command and its readings.",
+  "dyad:decides": "Is the service healthy, degraded or down, and what follows?",
+  "dyad:inputs": [
+    "the health command's latest events",
+    "the service levels the run-book states",
+    "whether the never rules still hold"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "healthy",
+      "name": "Healthy",
+      "dyad:when": "the health command passes and every stated level is met",
+      "dyad:then": "nothing; the reading is an event and opens no row"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "degraded",
+      "name": "Degraded",
+      "dyad:when": "the service answers but a stated level is missed",
+      "dyad:then": "report it; open a row to restore the level, or roll back (dmc:rollback)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "down",
+      "name": "Down",
+      "dyad:when": "the health command fails",
+      "dyad:then": "report it at once; restore by the run-book, or roll back (dmc:rollback); each act is classed (dmc:host-action-class)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "unsafe",
+      "name": "Unsafe",
+      "dyad:when": "a never rule is broken in a live conversation",
+      "dyad:then": "stop the service by the run-book, report it, and treat it as an incident; it stays stopped until the operator says in words to restart"
+    }
+  ],
+  "dyad:precedence": "unsafe over down over degraded over healthy",
+  "dyad:default": "down",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/operate.md",
+  "dyad:alsoIn": [
+    "rules/product-development.md"
+  ],
+  "dyad:owner": "prompt-therapy:product-development"
+}
