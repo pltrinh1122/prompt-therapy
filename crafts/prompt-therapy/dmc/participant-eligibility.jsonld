@@ -1,0 +1,54 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/participant-eligibility",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "participant-eligibility",
+  "name": "Who may be invited to a research interview",
+  "description": "Whether a person the operator names may be invited to a user-research interview, so no minor and no one who declined is ever contacted.",
+  "dyad:decides": "May this person be invited?",
+  "dyad:inputs": [
+    "the operator's prompt naming the person",
+    "the operator's confirmation of the person's age",
+    "the research record files"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "eligible",
+      "name": "May be invited",
+      "dyad:when": "an adult the operator knows and names, whom the operator can write to from their own mailbox, not registered before",
+      "dyad:then": "register the participant and plan the outreach"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "ask-age",
+      "name": "Age not yet confirmed",
+      "dyad:when": "the operator has not said the person is an adult",
+      "dyad:then": "ask the operator; nothing goes further until they say"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "not-eligible",
+      "name": "May not be invited",
+      "dyad:when": "a minor, someone who declined or withdrew before, or someone the operator cannot contact from their own mailbox",
+      "dyad:then": "stop, and record nothing about the person"
+    }
+  ],
+  "dyad:precedence": "not-eligible, then ask-age",
+  "dyad:default": "ask-age",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}

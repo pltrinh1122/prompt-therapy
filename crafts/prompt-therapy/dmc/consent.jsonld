@@ -1,0 +1,75 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/consent",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "consent",
+  "name": "What a reply means for research consent",
+  "description": "What a participant's reply means for their consent: to take part, to each saved note and profile, to pause, to withdraw, or to delete what was saved.",
+  "dyad:decides": "What does this reply mean for consent?",
+  "dyad:inputs": [
+    "the reply",
+    "the record's consent line",
+    "the notes and profile proposed and saved"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "agreed",
+      "name": "A clear agreement",
+      "dyad:when": "a clear yes to the invitation's terms, such as I agree or the same in other words with no condition; or, for one proposed note or profile, a yes to its own label",
+      "dyad:then": "write the consent line as agreed with the date and the craft version holding the invitation, and start the questions; for a note, save it"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "unclear",
+      "name": "Not clear either way",
+      "dyad:when": "a yes with a condition, or words that could go either way",
+      "dyad:then": "ask once, kindly; unclear twice ends the outreach"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "declined",
+      "name": "A no before any question",
+      "dyad:when": "a no to the invitation, before any research question",
+      "dyad:then": "thank them, write the consent line as declined with the date, and end"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "pause",
+      "name": "A wish to pause",
+      "dyad:when": "after agreeing, words such as that's all for now, which stop for now without taking part back",
+      "dyad:then": "ask no new questions, send an end email that leaves the last question open, and send no nudge"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "withdrawn",
+      "name": "Consent taken back",
+      "dyad:when": "after agreeing, any wish to stop or to take part no longer",
+      "dyad:then": "write the consent line as withdrawn with the date, remove every saved note and the profile, confirm in the thread, and end"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "delete-note",
+      "name": "A request to delete saved items",
+      "dyad:when": "a request to remove one or more numbered notes, or the profile",
+      "dyad:then": "remove them, confirm in the thread, and go on"
+    }
+  ],
+  "dyad:precedence": "withdrawn, then declined, then delete-note, then pause, then unclear",
+  "dyad:default": "unclear",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}
