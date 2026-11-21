@@ -53,6 +53,22 @@ class NextTests(unittest.TestCase):
         self.assertEqual(thread.next_numbers([], 3), [1, 2, 3])
 
 
+class WatchGapTests(unittest.TestCase):
+    def test_gaps_double_from_two(self):
+        self.assertEqual([thread.watch_gap(n) for n in range(1, 11)], [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024])
+
+    def test_held_at_the_cap(self):
+        self.assertEqual(thread.watch_gap(11), 1024)
+        self.assertEqual(thread.watch_gap(50), 1024)
+
+    def test_first_ten_cover_about_34_hours(self):
+        self.assertEqual(sum(thread.watch_gap(n) for n in range(1, 11)) // 60, 34)
+
+    def test_n_counts_from_one(self):
+        with self.assertRaises(ValueError):
+            thread.watch_gap(0)
+
+
 class CheckTests(unittest.TestCase):
     def test_a_good_email_passes(self):
         e = email("Thanks. Here's what I heard:\n- **Q1:** reports.\n\n**Q4 (about Q1).** Why do you think it did that?")

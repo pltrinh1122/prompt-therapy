@@ -63,12 +63,18 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
 
 **B. Plan and review (before anything is sent)**
 5. **Plan** the outreach in the row's plan file: the invitation template below as it will be sent, the email ceiling
-   (default 20), the check-in interval (default 6 hours), and the background block.
+   (default 20), the watch schedule (step 7), and the background block.
 6. **The operator reviews and decides.** Changes the operator asks for revise the plan in place. Nothing is sent
    before the plan-`Y`, which carries the invitation and every email up to the ceiling.
 
 **C. Invite and capture consent**
-7. **Invite.** Send the template, filling in only `[first name]` and `[operator name]`. Schedule the check-ins.
+7. **Invite.** Send the template, filling in only `[first name]` and `[operator name]`. Schedule the watch:
+   - after every email Wren sends, and after every reply, the gaps between checks double: 2, 4, 8 … 512 minutes, then
+     1024 minutes (about 17 hours), held there; `scripts/thread.py gap <n>` gives the n-th;
+   - each check reads the one thread for a reply and runs the bounce search (step 17);
+   - one reminder on the session at a time, the next scheduled as the current one fires, the pending one cancelled at
+     the end;
+   - the nudge after 3 days and the end 7 days after it are unchanged.
 8. **Read the answer** by `dmc:consent`. Only a clear agreement starts the questions. The record's consent line
    becomes `consent: agreed <date> (invitation: prompt-therapy <version>)`, the craft version that holds the template,
    or `declined <date>`, which ends the outreach. If the first reply is only about Prompt Therapy, the next email
@@ -76,7 +82,8 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
 9. **Consent per note.** Every note, and the profile, is saved only on a yes to its own label (step 15).
 
 **D. The exchange (repeated at each check-in)**
-10. **Check in.** Search for the one thread and read only it, and the bounce search of step 17. With no new reply, decide by `dmc:research-session`
+10. **Check in**, at each watch check (step 7). Search for the one thread and read only it, and the bounce search of
+    step 17. With no new reply, decide by `dmc:research-session`
     (wait, follow up once, or end). The nudge and end clocks pause while an escalation is open.
 11. **Read the reply.** Split it into parts by `dmc:reply-reading`: labelled parts (`Q4: …`, `N1 yes`, `P yes`) by
     `scripts/thread.py parse`, the rest by judgement. A wish to stop, pause or take back consent is read first, by
@@ -123,8 +130,8 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
     A failed check is fixed before sending.
 17. **Send** it as a reply in the thread, then tell the operator, with no names: the act chosen and why, the numbers
     asked, the notes proposed, the emails sent against the ceiling.
-    - **Watch for a bounce.** After every email sent, the invitation included, check for a bounce about 15 minutes
-      later, about 2 hours later, and at every check-in for 48 hours. The search is scoped: from mailer-daemon or
+    - **Watch for a bounce.** After every email sent, the invitation included, every watch check (step 7) looks for a
+      bounce. The search is scoped: from mailer-daemon or
       postmaster, newer than the send, naming the participant's address; ids only first, and only a matching message
       is read. This is the one mail read outside the thread.
     - **On a bounce**, alert the operator at once: an inbox notice to the home, a ring, and a push notification to the
