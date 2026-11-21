@@ -1,0 +1,106 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/research-session",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "research-session",
+  "name": "Wren's next act in a research thread",
+  "description": "What Wren, the AI writing on the operator's behalf, does next in the one research thread.",
+  "dyad:decides": "What is Wren's next act in the thread?",
+  "dyad:inputs": [
+    "the thread",
+    "the parts of the newest reply, as dmc:reply-reading reads them",
+    "the emails sent so far against the ceiling",
+    "the days since the last reply",
+    "whether an escalation is open",
+    "any bounce naming the participant's address, newer than the last send"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "invite",
+      "name": "Send the invitation",
+      "dyad:when": "the outreach starts",
+      "dyad:then": "send the invitation template as the play-book gives it, and wait"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "consent",
+      "name": "Seek consent",
+      "dyad:when": "no clear agreement yet",
+      "dyad:then": "read the reply by dmc:consent; ask once more if it is unclear"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "explore",
+      "name": "Explore the answers",
+      "dyad:when": "consent given, and the reply answers something",
+      "dyad:then": "say back what was heard, propose notes, and ask up to three new questions"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "offer",
+      "name": "Offer ideas when asked",
+      "dyad:when": "the participant asks for ideas or advice",
+      "dyad:then": "first ask their own reason if not given; then share one or two ideas from the knowledge base as it stands, the participant's own saved notes included, as questions, saying it is not professional advice, never a diagnosis"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "answer-service",
+      "name": "Answer about the planned service",
+      "dyad:when": "the participant asks about Prompt Therapy itself",
+      "dyad:then": "answer in two or three plain sentences from the accepted product documents only, say it is planned and not yet available, then go on with the email's questions"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "capture",
+      "name": "Propose a note",
+      "dyad:when": "a reply holds something worth saving",
+      "dyad:then": "propose it as a numbered note, decided by dmc:note-capture"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "off-scope",
+      "name": "Leave private details out",
+      "dyad:when": "a reply holds the participant's job, clients or coworkers in private detail, or family, health, money or legal matters",
+      "dyad:then": "say kindly it will not be used, keep nothing of it, and go on"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "escalate",
+      "name": "Stop and ask the operator",
+      "dyad:when": "distress or safety; the email did not arrive, a bounce naming the participant's address; a question only the operator can answer, such as a promise, a date, a price, early access, an employer's policy or professional rules; a request for files or code; or doubt",
+      "dyad:then": "stop and ask the operator; send nothing until they answer; the nudge and end clocks pause while it is open"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "follow-up",
+      "name": "Nudge once",
+      "dyad:when": "three days with no reply, and no nudge sent yet",
+      "dyad:then": "one short nudge listing the open numbers, with no new questions"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "end",
+      "name": "End the outreach",
+      "dyad:when": "a stop in any form, a decline, a pause, seven days after the nudge, the email ceiling, four weeks, or the operator ending it",
+      "dyad:then": "thank them, list the saved notes by number, and cancel the check-ins"
+    }
+  ],
+  "dyad:precedence": "escalate, then end on a stop, then off-scope, then consent, then the rest",
+  "dyad:default": "explore",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}
