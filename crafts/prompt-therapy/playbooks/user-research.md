@@ -76,7 +76,7 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
 9. **Consent per note.** Every note, and the profile, is saved only on a yes to its own label (step 15).
 
 **D. The exchange (repeated at each check-in)**
-10. **Check in.** Search for the one thread and read only it. With no new reply, decide by `dmc:research-session`
+10. **Check in.** Search for the one thread and read only it, and the bounce search of step 17. With no new reply, decide by `dmc:research-session`
     (wait, follow up once, or end). The nudge and end clocks pause while an escalation is open.
 11. **Read the reply.** Split it into parts by `dmc:reply-reading`: labelled parts (`Q4: …`, `N1 yes`, `P yes`) by
     `scripts/thread.py parse`, the rest by judgement. A wish to stop, pause or take back consent is read first, by
@@ -123,6 +123,14 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
     A failed check is fixed before sending.
 17. **Send** it as a reply in the thread, then tell the operator, with no names: the act chosen and why, the numbers
     asked, the notes proposed, the emails sent against the ceiling.
+    - **Watch for a bounce.** After every email sent, the invitation included, check for a bounce about 15 minutes
+      later, about 2 hours later, and at every check-in for 48 hours. The search is scoped: from mailer-daemon or
+      postmaster, newer than the send, naming the participant's address; ids only first, and only a matching message
+      is read. This is the one mail read outside the thread.
+    - **On a bounce**, alert the operator at once: an inbox notice to the home, a ring, and a push notification to the
+      operator where the tool exists. The alert gives the bounce's reason, never the address. Send nothing more, pause
+      the nudge and end clocks, and wait for the operator. A corrected address comes by direct message only, never in a
+      file, and needs a new participant id (step 3).
 18. **Save** each note the participant says yes to, in the record file: its number, date, `kept: yes <date>`, and the
     knowledge-base entry it touches or the candidate it adds, in de-identified words. "No" saves nothing; "change it"
     proposes the new wording under a new number. A profile they okay is written as `profile: <the block> (okayed
