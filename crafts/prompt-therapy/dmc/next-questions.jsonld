@@ -1,0 +1,91 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/next-questions",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "next-questions",
+  "name": "Which questions go in the next research email",
+  "description": "Which questions, at most three, go in the next email of a research thread.",
+  "dyad:decides": "Which questions, at most three, go in the next email?",
+  "dyad:inputs": [
+    "the answers so far, and how deep each has gone",
+    "the open and skipped numbers",
+    "the notes and profile saved",
+    "the participant's pace",
+    "the operator's okayed background, used only to choose and word questions"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "first-three",
+      "name": "The fixed first questions",
+      "dyad:when": "consent was just given",
+      "dyad:then": "ask the play-book's three fixed first questions, the first of which asks which AI tools are used and for what"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "tool-again",
+      "name": "Ask the tool once more",
+      "dyad:when": "the question about which tools was skipped, and not asked again yet",
+      "dyad:then": "ask it once more, in other words, as its own line; the only question that may be asked twice"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "deeper",
+      "name": "Go one level deeper",
+      "dyad:when": "an answer has not reached what would have helped",
+      "dyad:then": "ask why they think it happened, or what happened next, naming the number it follows"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "anchor-check",
+      "name": "Ask what would have helped",
+      "dyad:when": "an answer names what helped or would have helped",
+      "dyad:then": "ask what would have stopped it happening, in their words"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "profile",
+      "name": "Ask the profile question",
+      "dyad:when": "the second round, after their first stories, and no profile asked yet",
+      "dyad:then": "ask the one optional profile question with its choices, counted among the email's three"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "new-event",
+      "name": "Ask about another time",
+      "dyad:when": "a story has reached what helped, or ran dry",
+      "dyad:then": "ask about a different time or a different kind of task"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "clarify",
+      "name": "Ask which number it was",
+      "dyad:when": "a heard line was a guess",
+      "dyad:then": "ask which number it was for"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "fewer",
+      "name": "Ask less",
+      "dyad:when": "replies are getting shorter or slower",
+      "dyad:then": "one question or none, and say they can stop anytime"
+    }
+  ],
+  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then new-event; fewer caps the count; every question open, never yes-or-no, never leading, never a skipped number again, at most two follow-ups on one answer, at most three in all",
+  "dyad:default": "deeper",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}

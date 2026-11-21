@@ -4,7 +4,8 @@ Taking what operation and users teach back into the product: the specifications,
 Lifecycle: `product-development.md`.
 
 ## Trigger
-A finding from `operate.md`, a test failure classed as a moved canon, or a user's complaint.
+A finding from `operate.md`, a test failure classed as a moved canon, a user's complaint, or a candidate a
+participant agreed to save in a research interview (`user-research.md`).
 
 ## Steps
 1. **De-identify** the finding: no name, no client, no employer, no private context. One that cannot be is dropped.

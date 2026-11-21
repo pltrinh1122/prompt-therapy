@@ -1,0 +1,61 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/participant-context",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "participant-context",
+  "name": "What may be kept about a research participant",
+  "description": "Which details about a participant, from the operator's background or from the participant's own profile answers, may be kept and used, so nothing identifying or sensitive is written down.",
+  "dyad:decides": "May this detail be kept and used, and in what words?",
+  "dyad:inputs": [
+    "the detail, as the operator gave it in background, or as the participant gave it in answer to the profile question",
+    "the profile's fixed fields and bands: kind of work, role, years in the field, how often AI tools are used, which tools and for what",
+    "whether the participant has okayed a profile"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "keep",
+      "name": "Kept in general words",
+      "dyad:when": "general and not identifying: field or kind of work, role level, tools used, years of experience in a band, how often AI tools are used, preferred style, topics to avoid",
+      "dyad:then": "written in general words in the record's context block or profile; used only to choose and word questions, never mentioned in an email unless the participant has said it"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "generalize",
+      "name": "Kept only in a wider form",
+      "dyad:when": "useful but too specific as given, such as a team, a project, a city or an exact number of years",
+      "dyad:then": "kept only in a wider form or band, shown in that form to whoever gave it before it is written"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "drop",
+      "name": "Not written and not used",
+      "dyad:when": "it names or points to a person, employer or client, gives an age beyond adult, where the participant lives or works, their schooling, or touches health, family, money or legal matters",
+      "dyad:then": "not written down and not used; the operator is told in the chat that it was dropped, and why"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "ask",
+      "name": "Ask before deciding",
+      "dyad:when": "it cannot be told which of the above it is",
+      "dyad:then": "ask whoever gave it, once"
+    }
+  ],
+  "dyad:precedence": "drop, then generalize; the participant's own okayed profile replaces the operator's background, and a declined profile removes the background too",
+  "dyad:default": "ask",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}
