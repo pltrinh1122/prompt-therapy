@@ -6,10 +6,12 @@ Three mechanical steps of the play-book, the same on every reply and every email
   what is left is returned unlabelled, for judgement (`dmc:reply-reading`).
 - `next_numbers`: the next unused question numbers.
 - `check`: the problems in an email before it is sent (play-book step 16); empty means it may be sent.
+- `watch_gap`: the n-th gap, in minutes, between watch checks after a send or a reply (play-book step 7).
 
 Usage:
   thread.py parse <reply-file>
   thread.py next --used 1,2,3 [-k 3]
+  thread.py gap <n>
   thread.py check <email-file> --asked 1,2,3 [--skipped 2] [--sent 4] [--ceiling 20]
                   [--q1-answered] [--reask-q1] [--said <word>]...
 Exit 0 when check finds nothing, 1 when it finds a problem.
@@ -24,6 +26,7 @@ import dyadlib
 
 MAX_WORDS = 200
 MAX_NEW = 3
+GAP_FIRST, GAP_CAP = 2, 1024   # minutes: 2, 4, 8 ... 512, then 1024 and held
 SIGNATURE = "Wren (AI), writing on behalf of"
 RESEARCH_WORDS = ("symptom", "cause", "root cause", "anchor", "why-tree", "canon", "node")
 PRODUCTS = ("Claude", "ChatGPT", "GPT", "Copilot", "Gemini", "Cursor", "Codex", "Windsurf", "Perplexity")
@@ -39,6 +42,7 @@ INVARIANTS = [   # crafts/syseng/rules/invariants.md
     ("research-words-lowercase", lambda: all(w == w.lower() for w in RESEARCH_WORDS)),
     ("signature-names-no-product", lambda: not any(p in SIGNATURE for p in PRODUCTS)),
     ("signature-says-ai", lambda: "(AI)" in SIGNATURE),
+    ("gaps-double-to-the-cap", lambda: GAP_CAP % GAP_FIRST == 0 and (GAP_CAP & (GAP_CAP - 1)) == 0),
 ]
 dyadlib.enforce(INVARIANTS, __name__)
 
@@ -69,6 +73,13 @@ def next_numbers(used, k: int = MAX_NEW) -> list[int]:
     """The next `k` question numbers after the highest used; numbers never go back."""
     top = max(used, default=0)
     return list(range(top + 1, top + 1 + k))
+
+
+def watch_gap(n: int) -> int:
+    """The n-th gap (n from 1), in minutes, between watch checks: it doubles from 2 and is held at 1024."""
+    if n < 1:
+        raise ValueError("watch_gap: n counts from 1")
+    return min(GAP_FIRST << (n - 1), GAP_CAP)
 
 
 def words(email: str) -> int:
@@ -121,6 +132,7 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("parse"); p.add_argument("file")
     n = sub.add_parser("next"); n.add_argument("--used", default=""); n.add_argument("-k", type=int, default=MAX_NEW)
+    g = sub.add_parser("gap"); g.add_argument("n", type=int)
     c = sub.add_parser("check"); c.add_argument("file")
     c.add_argument("--asked", default=""); c.add_argument("--skipped", default="")
     c.add_argument("--sent", type=int, default=0); c.add_argument("--ceiling", type=int, default=20)
@@ -133,6 +145,9 @@ def main(argv=None) -> int:
             print(f"{label}\t{text}")
         if rest:
             print(f"-\t{rest}")
+        return 0
+    if a.cmd == "gap":
+        print(watch_gap(a.n))
         return 0
     if a.cmd == "next":
         print(" ".join(f"Q{x}" for x in next_numbers(_ints(a.used), a.k)))
