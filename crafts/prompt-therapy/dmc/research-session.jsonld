@@ -19,7 +19,8 @@
     "the parts of the newest reply, as dmc:reply-reading reads them",
     "the emails sent so far against the ceiling",
     "the days since the last reply",
-    "whether an escalation is open"
+    "whether an escalation is open",
+    "any bounce naming the participant's address, newer than the last send"
   ],
   "hasDefinedTerm": [
     {
@@ -75,7 +76,7 @@
       "@type": "DefinedTerm",
       "termCode": "escalate",
       "name": "Stop and ask the operator",
-      "dyad:when": "distress or safety; a question only the operator can answer, such as a promise, a date, a price, early access, an employer's policy or professional rules; a request for files or code; or doubt",
+      "dyad:when": "distress or safety; the email did not arrive, a bounce naming the participant's address; a question only the operator can answer, such as a promise, a date, a price, early access, an employer's policy or professional rules; a request for files or code; or doubt",
       "dyad:then": "stop and ask the operator; send nothing until they answer; the nudge and end clocks pause while it is open"
     },
     {
