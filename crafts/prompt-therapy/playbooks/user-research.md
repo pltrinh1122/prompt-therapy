@@ -69,8 +69,8 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
 
 **C. Invite and capture consent**
 7. **Invite.** Send the template, filling in only `[first name]` and `[operator name]`. Schedule the watch:
-   - after every email Wren sends, and after every reply, the gaps between checks double: 2, 4, 8 … 512 minutes, then
-     1024 minutes (about 17 hours), held there; `scripts/thread.py gap <n>` gives the n-th;
+   - after every email Wren sends, and after every reply, the gaps between checks double: 2, 4, 8, 16, 32 minutes,
+     then 64 minutes, held there, so a reply waits at most about an hour; `scripts/thread.py gap <n>` gives the n-th;
    - each check reads the one thread for a reply and runs the bounce search (step 17);
    - one reminder on the session at a time, the next scheduled as the current one fires, the pending one cancelled at
      the end;

@@ -26,7 +26,7 @@ import dyadlib
 
 MAX_WORDS = 200
 MAX_NEW = 3
-GAP_FIRST, GAP_CAP = 2, 1024   # minutes: 2, 4, 8 ... 512, then 1024 and held
+GAP_FIRST, GAP_CAP = 2, 64   # minutes: 2, 4, 8, 16, 32, then 64 and held
 SIGNATURE = "Wren (AI), writing on behalf of"
 RESEARCH_WORDS = ("symptom", "cause", "root cause", "anchor", "why-tree", "canon", "node")
 PRODUCTS = ("Claude", "ChatGPT", "GPT", "Copilot", "Gemini", "Cursor", "Codex", "Windsurf", "Perplexity")
@@ -76,7 +76,7 @@ def next_numbers(used, k: int = MAX_NEW) -> list[int]:
 
 
 def watch_gap(n: int) -> int:
-    """The n-th gap (n from 1), in minutes, between watch checks: it doubles from 2 and is held at 1024."""
+    """The n-th gap (n from 1), in minutes, between watch checks: it doubles from 2 and is held at 64."""
     if n < 1:
         raise ValueError("watch_gap: n counts from 1")
     return min(GAP_FIRST << (n - 1), GAP_CAP)

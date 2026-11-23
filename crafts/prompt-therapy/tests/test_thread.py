@@ -55,14 +55,15 @@ class NextTests(unittest.TestCase):
 
 class WatchGapTests(unittest.TestCase):
     def test_gaps_double_from_two(self):
-        self.assertEqual([thread.watch_gap(n) for n in range(1, 11)], [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024])
+        self.assertEqual([thread.watch_gap(n) for n in range(1, 7)], [2, 4, 8, 16, 32, 64])
 
     def test_held_at_the_cap(self):
-        self.assertEqual(thread.watch_gap(11), 1024)
-        self.assertEqual(thread.watch_gap(50), 1024)
+        self.assertEqual(thread.watch_gap(7), 64)
+        self.assertEqual(thread.watch_gap(50), 64)
 
-    def test_first_ten_cover_about_34_hours(self):
-        self.assertEqual(sum(thread.watch_gap(n) for n in range(1, 11)) // 60, 34)
+    def test_at_most_24_checks_a_day_at_the_cap(self):
+        self.assertEqual(24 * 60 // thread.watch_gap(30), 22)
+        self.assertLessEqual(24 * 60 // thread.watch_gap(30), 24)
 
     def test_n_counts_from_one(self):
         with self.assertRaises(ValueError):
