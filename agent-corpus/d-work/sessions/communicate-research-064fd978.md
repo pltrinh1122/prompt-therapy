@@ -1,6 +1,6 @@
 session: communicate-research-064fd978
-seen: 2026-11-21T05:21:53+00:00
-root: /home/user/prompt-therapy
+seen: 2026-11-23T16:14:36+00:00
+root: /home/user/pt-wt-main
 rows: 
 files: 
 writer: 064fd978-934d-5fc1-83b2-9e65f96eeabf
