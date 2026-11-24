@@ -31,6 +31,50 @@ first act is a read-only diagnostic, posted as one report, `diagnostic: pass` or
 
 Nothing is sent, labelled or changed during the diagnostic. On a fail it stops and waits for the operator.
 
+## The container and the engagement strategy (plan revisions 28 and 29)
+**The container** is the operator's, and any change to it is a plan revision, asked:
+1. **Consent.** "I agree" before any question, and a yes to each note by its own number before it is saved.
+   Withdrawal and deletion at any time.
+2. **Privacy.** Nothing of the conversation leaves the mailbox, and nothing in "What never enters the repository"
+   enters it. The operator's private chats are never quoted or hinted at, except a one-time disclosure of the general
+   point of feedback about the research itself.
+3. **Never:** diagnose; name a person; keep anything without consent; claim to be human (every email says it is from
+   an AI); give therapy or professional advice; take a give-back from the operator's background or hypotheses.
+4. **Scope of mail.** The one thread, plus bounce notices naming the participant's address.
+5. **No cap and no fixed end.** The interview goes on while the participant is willing and new insight keeps coming,
+   and ends only as "When it ends" says.
+6. **Escalation.** As `dmc:research-session` names it: stop and ask the operator through the home.
+7. **Watch.** Doubling gaps, capped at 64 minutes, with the bounce watch (step 7).
+8. **Sources.** Answers about Prompt Therapy come only from the accepted documents; give-backs only from the
+   knowledge base.
+
+**The engagement strategy** is Wren's, decided and adapted without asking, inside the container: what to ask and in
+what order, how many questions (two or fewer by default), their wording, format, tone, length within about 200 words,
+whether and when to recap, whether to give one thing back and which knowledge-base item, when to propose notes, and
+how the closing email reads. Steps 13–16 hold its current default. **Each change is reported, not asked:** a one-line
+`strategy change: <what changed>; why: <why>` to the home's inbox, with no names, when it is made. The operator may
+steer or overrule it at any time.
+
+## When it ends (plan revision 29)
+- **At once:** the participant says stop, declines, or withdraws consent (`dmc:consent`); the operator ends it; an
+  escalation the operator answers by ending it.
+- **After silence:** no reply for 3 days brings one light nudge; no reply for 7 days after the nudge brings a closing
+  email that says the door stays open. A later reply reopens it.
+- **Willingness, the participant's to decide:**
+  - **Fatigue check.** Two replies in a row shorter or slower than their own norm, or saying there is little to add,
+    bring one plain question: "Keep going, take a break, or wrap up?" Their answer decides.
+  - **A break** pauses, with no nudges, until they write again or until a date they name.
+  - **A standing check** about every five emails, one line inside a normal email: "Still useful for you? Happy to keep
+    going or stop."
+- **Insight, Wren's to judge and theirs to decide:**
+  - **New ground:** a round brings a story, a cause or a fix the knowledge base lacks, or a "not" to a give-back. A
+    round that only confirms what is known brings none.
+  - **Saturation:** two rounds in a row with nothing new bring a change of area, a different kind of task or tool.
+  - **Offer to wrap up:** two such changes of area in a row with nothing new bring an offer to wrap up, and they
+    decide. Insight running dry never ends it alone.
+- **The running notes list:** about every five emails, and before any wrap-up or break, Wren sends the new candidate
+  notes, numbered, for a yes or no each (step 14).
+
 ## Steps
 **A. Open and register (once per participant)**
 1. **Open the row.** The prompt opens a row, its words recorded with the details above withheld.
@@ -62,10 +106,11 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
        consent: pending
 
 **B. Plan and review (before anything is sent)**
-5. **Plan** the outreach in the row's plan file: the invitation template below as it will be sent, the email ceiling
-   (default 20), the watch schedule (step 7), and the background block.
+5. **Plan** the outreach in the row's plan file: the invitation template below as it will be sent, the container
+   above, the watch schedule (step 7), and the background block.
 6. **The operator reviews and decides.** Changes the operator asks for revise the plan in place. Nothing is sent
-   before the plan-`Y`, which carries the invitation and every email up to the ceiling.
+   before the plan-`Y`, which carries the invitation and every email the engagement strategy writes inside the
+   container.
 
 **C. Invite and capture consent**
 7. **Invite.** Send the template, filling in only `[first name]` and `[operator name]`. Schedule the watch:
@@ -74,12 +119,13 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
    - each check reads the one thread for a reply and runs the bounce search (step 17);
    - one reminder on the session at a time, the next scheduled as the current one fires, the pending one cancelled at
      the end;
-   - the nudge after 3 days and the end 7 days after it are unchanged.
+   - the nudge after 3 days and the closing email 7 days after it ("When it ends"); a break stops the watch until
+     they write again or the date they named.
 8. **Read the answer** by `dmc:consent`. Only a clear agreement starts the questions. The record's consent line
    becomes `consent: agreed <date> (invitation: prompt-therapy <version>)`, the craft version that holds the template,
    or `declined <date>`, which ends the outreach. If the first reply is only about Prompt Therapy, the next email
    answers it and asks for agreement again.
-9. **Consent per note.** Every note, and the profile, is saved only on a yes to its own label (step 15).
+9. **Consent per note.** Every note, and the profile, is saved only on a yes to its own label, in the running notes list (step 14).
 
 **D. The exchange (repeated at each check-in)**
 10. **Check in**, at each watch check (step 7). Search for the one thread and read only it, and the bounce search of
@@ -89,15 +135,15 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
     `scripts/thread.py parse`, the rest by judgement. A wish to stop, pause or take back consent is read first, by
     `dmc:consent`.
     **Watch engagement** in every reply: its length, the time it took, and whether it asks questions of its own. Two
-    replies in a row each shorter than the one before bring the `fewer` outcome of `dmc:next-questions` and a
-    check-in: "Still useful for you? Happy to wrap up."
+    replies in a row shorter or slower than their own norm, or saying there is little to add, bring the `fewer`
+    outcome of `dmc:next-questions` and the fatigue check ("When it ends").
 12. **Decide the next act** by `dmc:research-session`. On an escalation, stop and ask the operator; send nothing until
     they answer.
-13. **Choose two questions** by `dmc:next-questions`, each with the next number from `scripts/thread.py next`: one
-    **story** question ("Walk me through the last time…", a real event, step by step) and one **test** question, the
-    email's give-back (step 15), asked only on a subject they have already told in their own words. A follow-up says
-    which answer it builds on. Fewer, deeper questions: breadth is what tires a participant, and a story returns more
-    than a scoping question.
+13. **Choose two questions** by `dmc:next-questions`, each with the next number from `scripts/thread.py next`, on two
+    lines they haven't been asked about: one **story** question ("Tell me about the last time…", a real event, which
+    may ask their view of why it happened) and one **test** question, the email's give-back (step 15). The give-back
+    comes only from the knowledge base, never from their own words or the operator's background, and never on the same
+    line as that email's story. A follow-up on an earlier answer comes only when they raise it again themselves.
     - **The first questions are fixed**, after consent:
       > **Q1.** Which AI tools do you use at work, and what do you mostly use them for?
       >
@@ -114,37 +160,39 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
       > **Q4.** A few quick things about you, all optional: your role (for example staff, senior or manager), how many
       > years you've worked in your field (0–2, 3–5, 6–10, more), and how often you use AI tools at work (daily,
       > weekly, now and then).
-14. **Propose notes** by `dmc:note-capture`: each a new `N` number, one plain sentence, marked in the record
-    `spontaneous` (they raised it themselves) or `prompted` (it answers a test question); a prompted yes is weaker
-    evidence, so an idea Wren offered never passes for their own finding. **Propose the profile**, once
+14. **Hold candidate notes** by `dmc:note-capture`: each a new `N` number, one plain sentence, marked `spontaneous`
+    (they raised it themselves) or `prompted` (it answers a test question); a prompted yes is weaker evidence, so an
+    idea Wren offered never passes for their own finding. They are held in the session, never in a file, and rebuilt
+    from the thread if the session is replaced. They are not shown mid-email: the **running notes list**, about every
+    five emails and before any wrap-up or break, lists the new ones, numbered, quoted exactly, for a yes or no each. **Propose the profile**, once
     the profile question is answered, by `dmc:participant-context`: one `P` block holding only the profile's fields
     (kind of work, role, years in a band, how often, which tools and for what).
-15. **Write the email** in this order, every time:
-    1. **Why and where**, two lines before anything else: `**This round:**` what this round is looking for, and
-       `**Where we are:**` roughly how far along ("about three short rounds left, or stop anytime"), always "about";
-    2. **the playback**, in email 6 and every third email after (9, 12, …): "What you've shown so far", three plain
-       bullets drawn only from their saved notes, never a hypothesis, and one line on how the notes will be used;
-    3. "Here's what I heard": one line per answered number; a new story with no number gets the next `Q` number here;
-    4. the notes and the profile to save (the format below);
-    5. the two new questions: the story, then the test, which is the **give-back**: one short idea from the knowledge
-       base that touches what they said, in plain words ("Other people have seen…"), always ending "Does that match
-       what you've seen, or not?" (`dmc:research-session`, offer);
-    6. "Still open if you want them": skipped numbers, listed for two emails, then dropped;
-    7. "Reply under any number you like, for example `Q4: …`. Skip any you want.";
-    8. "Wren (AI), writing on behalf of [operator name]".
+15. **Write the email.** The strategy's current default (plan revision 27, the pivot email its model):
+    1. a line saying it is Wren, an AI, writing from the operator's email;
+    2. a stop line: they can stop anytime, and there is no set number;
+    3. the why line, `Why I ask:` and the purpose, never their points;
+    4. no summary of their answers: no "here's what I heard" and no recap but the running notes list (step 14), its
+       notes quoted exactly; a guess about an unnumbered answer is shown, as one line, only when there is one to
+       correct;
+    5. the two new questions: the story, then the test, the **give-back**: one short idea from the knowledge base in
+       plain words ("Other people have seen…"), always ending "Does that match what you've seen, or not?"; a "not" is
+       evidence too;
+    6. about every five emails, the running notes list and the standing check ("When it ends");
+    7. "Short answers are fine."; and the signature, "Wren (AI), writing on behalf of [operator name]".
 16. **Check it** with `scripts/thread.py check`:
     - about 200 words at most, and at most two new questions, numbered next in turn;
-    - the why and where lines present, each opening its own line and saying something;
+    - a line opening `Why I ask:` that says something, and a line saying they can stop anytime or whenever;
     - the signature present, and nothing naming Claude as what Wren is;
     - before Q1 is answered, no product named except in the participant's own words;
     - none of the research words (symptom, cause, root cause, anchor, why-tree, canon, node);
     - no skipped number asked again (Q1 once, as above);
-    - a `P` block with nothing beyond its fields;
-    - the email count under the ceiling.
+    - a `P` block with nothing beyond its fields.
+
+    There is no email count to check (the container, item 5).
 
     A failed check is fixed before sending.
 17. **Send** it as a reply in the thread, then tell the operator, with no names: the act chosen and why, the numbers
-    asked, the notes proposed, the emails sent against the ceiling.
+    asked, the candidate notes held, the emails sent, and any strategy change made for it (its own one-line report).
     - **Watch for a bounce.** After every email sent, the invitation included, every watch check (step 7) looks for a
       bounce. The search is scoped: from mailer-daemon or
       postmaster, newer than the send, naming the participant's address; ids only first, and only a matching message
@@ -170,8 +218,9 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
       removal is a new commit and the note stays in git history.
 
 **F. End and close**
-20. **End** when `dmc:research-session` says so: thank them, list the saved notes by number, cancel the check-ins. A
-    pause leaves the last question open and sends no nudge.
+20. **End** when `dmc:research-session` says so, by "When it ends": send the running notes list for any candidates
+    not yet asked, thank them, list the saved notes by number with a few knowledge-base tips that touch them, and
+    cancel the check-ins. A break leaves the last question open and sends no nudge.
 21. **Route each candidate** by `dmc:feedback-route` (`evolve.md`). A hand-up to the knowledge base goes only on the
     operator's words.
 22. **Close the row.** The Done question names the record file's PR, with this evidence: the counts, consent's state,
@@ -217,14 +266,15 @@ problems and what helps".
 | where a saved candidate goes afterwards | `dmc:feedback-route` |
 
 ## Questions
-The row's plan question, whose plan states the invitation, the background block and the ceiling; every escalation,
+The row's plan question, whose plan states the invitation, the background block and the container; every change to
+the container, as a plan revision; every escalation,
 before anything more is sent; the row's Done question. The background ask and the participant-id ask are requests,
 not `Y/N` questions, and authorize nothing. No email is a question to the operator.
 
 ## Evidence
 - Registration: the id, never the address.
 - Consent's state and date; the tools as confirmed, or `not confirmed`; the profile's state.
-- Emails sent against the ceiling.
+- Emails sent, and every strategy change reported.
 - Questions asked, answered and skipped.
 - Notes proposed, saved and removed, each `spontaneous` or `prompted`.
 - Engagement: each reply's length and time to reply, its own questions, and every check-in sent.
@@ -233,15 +283,16 @@ not `Y/N` questions, and authorize nothing. No email is a question to the operat
 - The record file, and each candidate's route.
 
 ## The email format
-- **Two questions per email**, a story and a test, each optional. The participant answers any, all or none. The
-  fixed first three (step 13) came before this limit, and stay as they were asked.
-- **Every email says why and where** before its questions, and every third email from email 6 plays back what the
-  participant has shown so far (step 15). Every email gives one thing back and asks whether it holds.
+- **Two questions per email**, a story and a test, each optional, on two new lines. The participant answers any, all
+  or none. The fixed first three (step 13) came before this limit, and stay as they were asked.
+- **Every email says why, and that they can stop anytime** (step 15). It sums up nothing; the running notes list,
+  about every five emails, is the one place their words come back, quoted exactly. These lines are the engagement
+  strategy's default; the container is what does not change.
 - **Numbered once, for the whole thread**, never renumbered. A follow-up says which answer it follows:
   `Q5 (about your answer to Q2)`.
 - **A skipped question** is listed once by number under "Still open if you want them", for two emails, then dropped.
   It is never asked again in other words (Q1 aside, step 13).
-- **Notes**, each one plain sentence:
+- **Notes**, in the running notes list (step 14), each one plain sentence, quoted exactly:
   > **Can I save this for Prompt Therapy?**
   > With your OK, I'll save this one sentence in Prompt Therapy's list of common AI problems and what helps. Your name,
   > your email and your job won't be in it.
@@ -263,9 +314,9 @@ not `Y/N` questions, and authorize nothing. No email is a question to the operat
 - **Length:** about 200 words at most.
 
 ## Example exchange (made up; "Sam" is not a real person, and nothing here is from any real email)
-The exchange shows the earlier form, up to three questions a round. From plan revision 22 each email also opens with
-the why and where lines, asks two questions (a story and a test), gives one thing back, and every third email from the
-sixth plays back the saved notes (step 15); the steps and records are what govern.
+The exchange shows the earlier form: up to three questions a round, a "Here's what I heard" list and notes asked
+mid-email. Since plan revisions 22–29 an email says why and that they can stop, asks two questions on new lines (a
+story and a test), sums up nothing, and holds notes for the running list (steps 13–15); the steps and records govern.
 Written before the fixed first questions and the profile question of step 13; where they differ, the steps win. The
 bracketed lines in italics are notes for the reader, and are never in an email. Round 0 is the invitation template.
 

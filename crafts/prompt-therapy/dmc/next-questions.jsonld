@@ -17,10 +17,11 @@
   "dyad:inputs": [
     "the answers so far, and how deep each has gone",
     "the open and skipped numbers",
-    "the notes and profile saved",
+    "the notes and profile saved, and the candidates held",
     "the participant's pace",
     "the operator's okayed background, used only to choose and word questions",
-    "the engagement so far: each reply's length, the time it took, and whether it asked questions of its own"
+    "the engagement so far: each reply's length, the time it took, and whether it asked questions of its own",
+    "the lines already asked about"
   ],
   "hasDefinedTerm": [
     {
@@ -41,8 +42,8 @@
       "@type": "DefinedTerm",
       "termCode": "deeper",
       "name": "Go one level deeper",
-      "dyad:when": "an answer has not reached what would have helped",
-      "dyad:then": "ask why they think it happened, or what happened next, naming the number it follows"
+      "dyad:when": "they raised an earlier answer again themselves, and it has not reached what would have helped",
+      "dyad:then": "ask one follow-up, naming the number it follows; a second on the same answer only if the first opened something new"
     },
     {
       "@type": "DefinedTerm",
@@ -62,15 +63,15 @@
       "@type": "DefinedTerm",
       "termCode": "story",
       "name": "Ask for one story",
-      "dyad:when": "every exploring email, unless fewer applies",
-      "dyad:then": "ask one story question: \"Walk me through the last time…\", a real event, step by step, on the subject the email's why line names"
+      "dyad:when": "every exploring email, unless fewer applies, on a line not yet asked about",
+      "dyad:then": "ask one story question: \"Tell me about the last time…\", a real event, which may ask their view of why it happened"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "test",
       "name": "Test one idea",
-      "dyad:when": "the participant has already answered something on the subject, in their own account",
-      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base that touches what they said, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; never on a subject they have not yet told in their own words"
+      "dyad:when": "every exploring email, unless fewer applies",
+      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base only, never their own words or the operator's background, on a line not yet asked about and not the story's, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; a \"not\" is evidence too"
     },
     {
       "@type": "DefinedTerm",
@@ -91,10 +92,10 @@
       "termCode": "fewer",
       "name": "Ask less",
       "dyad:when": "replies are getting shorter or slower, or two replies in a row are shorter than the one before",
-      "dyad:then": "one question or none, and a check-in: \"Still useful for you? Happy to wrap up.\""
+      "dyad:then": "one question or none, and the fatigue check of dmc:research-session"
     }
   ],
-  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then story, then test, then new-event; fewer caps the count; every question open, never yes-or-no except the test's \"does that match, or not?\", never leading, never a skipped number again, at most two follow-ups on one answer, at most two in all; the fixed first three are asked before this limit applied",
+  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then story, then test, then new-event; fewer caps the count; every question open, never yes-or-no except the test's \"does that match, or not?\", never leading, never a skipped number again, two lines not yet asked about in each email, at most one follow-up on one answer unless it opened something new, at most two in all; the fixed first three were asked before this limit applied",
   "dyad:default": "deeper",
   "dyad:judgedBy": {
     "dyad:kind": "inference",

@@ -17,11 +17,11 @@
   "dyad:inputs": [
     "the thread",
     "the parts of the newest reply, as dmc:reply-reading reads them",
-    "the emails sent so far against the ceiling",
     "the days since the last reply",
     "whether an escalation is open",
     "any bounce naming the participant's address, newer than the last send",
-    "the saved notes, and the number of this email"
+    "the saved notes, and the number of this email",
+    "the emails sent, and the rounds since the last new ground, the last notes list and the last standing check"
   ],
   "hasDefinedTerm": [
     {
@@ -43,14 +43,14 @@
       "termCode": "explore",
       "name": "Explore the answers",
       "dyad:when": "consent given, and the reply answers something",
-      "dyad:then": "open with the why line (what this round is looking for) and the where line (roughly how far along: \"about three short rounds left, or stop anytime\"); in email 6 and every third email after, play back what they have shown so far in three plain bullets drawn only from their saved notes, and how the notes will be used; say back what was heard, propose notes, give one thing back (offer), and ask at most two questions by dmc:next-questions"
+      "dyad:then": "by the engagement strategy (the play-book's container and strategy, plan revision 28; each change reported to the home as one strategy-change line): say it is from an AI, that they can stop anytime, and why it asks; sum up nothing; give one thing back (offer); and ask at most two questions on new lines by dmc:next-questions"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "offer",
       "name": "Give one thing back",
       "dyad:when": "every exploring email, after the participant's own account; or the participant asks for ideas or advice",
-      "dyad:then": "share one short idea from the knowledge base as it stands, the participant's own saved notes included, that touches what they said, in plain words (\"Other people have seen…\"), always ending \"Does that match what you've seen, or not?\"; asked as the email's test question, never as professional advice or a diagnosis, never a hypothesis about them; when they ask for ideas, first ask their own reason if not given"
+      "dyad:then": "share one short idea from the knowledge base as it stands, never their own words or the operator's background, and never on the same line as the email's story question, in plain words (\"Other people have seen…\"), always ending \"Does that match what you've seen, or not?\"; asked as the email's test question, never as professional advice or a diagnosis, never a hypothesis about them; when they ask for ideas, first ask their own reason if not given"
     },
     {
       "@type": "DefinedTerm",
@@ -62,9 +62,9 @@
     {
       "@type": "DefinedTerm",
       "termCode": "capture",
-      "name": "Propose a note",
+      "name": "Hold a candidate note",
       "dyad:when": "a reply holds something worth saving",
-      "dyad:then": "propose it as a numbered note, decided by dmc:note-capture"
+      "dyad:then": "hold it as a numbered candidate, decided by dmc:note-capture, in the session and never in a file, for the running notes list"
     },
     {
       "@type": "DefinedTerm",
@@ -82,20 +82,62 @@
     },
     {
       "@type": "DefinedTerm",
+      "termCode": "notes-list",
+      "name": "Send the running notes list",
+      "dyad:when": "about five emails since the last list, or before any wrap-up or break, and candidates are held",
+      "dyad:then": "list the new candidate notes, numbered and quoted exactly, for a yes or no each; nothing is saved without its yes"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "standing-check",
+      "name": "Ask whether it is still useful",
+      "dyad:when": "about five emails since the last standing check",
+      "dyad:then": "add one line inside the normal email: \"Still useful for you? Happy to keep going or stop.\""
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "fatigue-check",
+      "name": "Ask keep going, break or wrap up",
+      "dyad:when": "two replies in a row shorter or slower than their own norm, or saying there is little to add",
+      "dyad:then": "ask one plain question: \"Keep going, take a break, or wrap up?\"; their answer decides"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "break",
+      "name": "Pause for a break",
+      "dyad:when": "they ask for a break",
+      "dyad:then": "pause with no nudges and no watch until they write again or until the date they named"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "change-area",
+      "name": "Change area",
+      "dyad:when": "two rounds in a row brought no new ground: no story, cause or fix the knowledge base lacks, and no \"not\" to a give-back",
+      "dyad:then": "ask about a different kind of task or tool"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "offer-wrap-up",
+      "name": "Offer to wrap up",
+      "dyad:when": "two changes of area in a row brought nothing new",
+      "dyad:then": "offer to wrap up, and they decide; insight running dry never ends it alone"
+    },
+    {
+      "@type": "DefinedTerm",
       "termCode": "follow-up",
       "name": "Nudge once",
       "dyad:when": "three days with no reply, and no nudge sent yet",
-      "dyad:then": "one short nudge listing the open numbers, with no new questions"
+      "dyad:then": "one short nudge, with no new questions"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "end",
       "name": "End the outreach",
-      "dyad:when": "a stop in any form, a decline, a pause, seven days after the nudge, the email ceiling, four weeks, or the operator ending it",
-      "dyad:then": "thank them, list the saved notes by number, and cancel the check-ins"
+      "dyad:when": "a stop in any form, a decline or a withdrawal; their choice to wrap up at a fatigue check or a wrap-up offer; seven days of silence after the nudge, when the closing email says the door stays open and a later reply reopens it; or the operator ending it; never an email count or a number of rounds",
+      "dyad:then": "send the running notes list for any candidates not yet asked, thank them, list the saved notes by number with a few knowledge-base tips that touch them, and cancel the check-ins"
     }
   ],
-  "dyad:precedence": "escalate, then end on a stop, then off-scope, then consent, then the rest",
+  "dyad:precedence": "escalate, then end on a stop, then off-scope, then consent, then break, then fatigue-check, then offer-wrap-up, then the rest; notes-list and standing-check ride inside an explore email",
   "dyad:default": "explore",
   "dyad:judgedBy": {
     "dyad:kind": "inference",

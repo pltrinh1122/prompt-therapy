@@ -9,7 +9,7 @@ import thread
 SIG = "Wren (AI), writing on behalf of [operator name]"
 
 
-WHY_WHERE = "**This round:** times a long session lost track.\n**Where we are:** about three short rounds left, or stop anytime."
+WHY_WHERE = "Why I ask: Prompt Therapy collects the snags people hit with AI at work.\nStop anytime."
 
 
 def email(body: str, why_where: str = WHY_WHERE) -> str:
@@ -76,7 +76,7 @@ class WatchGapTests(unittest.TestCase):
 class CheckTests(unittest.TestCase):
     def test_a_good_email_passes(self):
         e = email("Thanks. Here's what I heard:\n- **Q1:** reports.\n\n**Q4 (about Q1).** Why do you think it did that?")
-        self.assertEqual(thread.check(e, asked=[1, 2, 3], sent=2), [])
+        self.assertEqual(thread.check(e, asked=[1, 2, 3]), [])
 
     def test_missing_signature(self):
         self.assertIn("signature missing", thread.check("**Q1.** What happened?", asked=[]))
@@ -96,15 +96,19 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(thread.check(e, asked=[1, 2, 3]), [])
 
     def test_why_line_required(self):
-        e = email("Thanks.", why_where="**Where we are:** about two rounds left.")
-        self.assertIn("the why line missing: a line opening **This round:**", thread.check(e, asked=[]))
+        e = email("Thanks.", why_where="Stop anytime.")
+        self.assertIn("the why line missing: a line opening Why I ask:", thread.check(e, asked=[]))
 
-    def test_where_line_required(self):
-        e = email("Thanks.", why_where="**This round:** what planning looks like.")
-        self.assertIn("the where line missing: a line opening **Where we are:**", thread.check(e, asked=[]))
+    def test_stop_line_required(self):
+        e = email("Thanks.", why_where="Why I ask: Prompt Therapy collects the snags people hit.")
+        self.assertIn("no stop line: say they can stop anytime", thread.check(e, asked=[]))
+
+    def test_stop_whenever_counts(self):
+        e = email("Thanks.", why_where="Why I ask: to learn.\nWe keep going while it's useful, and stop whenever you say.")
+        self.assertEqual(thread.check(e, asked=[]), [])
 
     def test_an_empty_why_line_fails(self):
-        e = email("Thanks.", why_where="**This round:**\n**Where we are:** about two rounds left.")
+        e = email("Thanks.", why_where="Why I ask:\nStop anytime.")
         self.assertTrue(any("why line missing" in p for p in thread.check(e, asked=[])))
 
     def test_new_questions_numbered_next(self):
@@ -149,9 +153,9 @@ class CheckTests(unittest.TestCase):
         e = email("word " * 210)
         self.assertTrue(any("too long" in p for p in thread.check(e, asked=[])))
 
-    def test_ceiling(self):
-        e = email("Thanks.")
-        self.assertTrue(any("ceiling" in p for p in thread.check(e, asked=[], sent=20, ceiling=20)))
+    def test_no_email_cap(self):
+        self.assertFalse(hasattr(thread, "CEILING"))
+        self.assertNotIn("sent", thread.check.__code__.co_varnames[:thread.check.__code__.co_argcount])
 
 
 if __name__ == "__main__":

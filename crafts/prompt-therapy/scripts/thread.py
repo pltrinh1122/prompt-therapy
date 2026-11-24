@@ -6,14 +6,14 @@ Three mechanical steps of the play-book, the same on every reply and every email
   what is left is returned unlabelled, for judgement (`dmc:reply-reading`).
 - `next_numbers`: the next unused question numbers.
 - `check`: the problems in an email before it is sent (play-book step 16); empty means it may be sent: at most two
-  new questions, and the why-and-where lines present (plan revision 22).
+  new questions, the why line and a stop line present (plan revisions 22, 27-29); no email cap (revision 29).
 - `watch_gap`: the n-th gap, in minutes, between watch checks after a send or a reply (play-book step 7).
 
 Usage:
   thread.py parse <reply-file>
   thread.py next --used 1,2,3 [-k 3]
   thread.py gap <n>
-  thread.py check <email-file> --asked 1,2,3 [--skipped 2] [--sent 4] [--ceiling 20]
+  thread.py check <email-file> --asked 1,2,3 [--skipped 2]
                   [--q1-answered] [--reask-q1] [--said <word>]...
 Exit 0 when check finds nothing, 1 when it finds a problem.
 """
@@ -27,8 +27,8 @@ import dyadlib
 
 MAX_WORDS = 200
 MAX_NEW = 2
-WHY_LINE = "**This round:**"
-WHERE_LINE = "**Where we are:**"
+WHY_LINE = "Why I ask:"   # the purpose, every email (revisions 22, 27)
+STOP = re.compile(r"\bstop (anytime|any time|whenever)\b", re.I)   # his to end, every email (revision 29)
 GAP_FIRST, GAP_CAP = 2, 64   # minutes: 2, 4, 8, 16, 32, then 64 and held
 SIGNATURE = "Wren (AI), writing on behalf of"
 RESEARCH_WORDS = ("symptom", "cause", "root cause", "anchor", "why-tree", "canon", "node")
@@ -42,7 +42,7 @@ WROTE = re.compile(r"^On .+ wrote:\s*$", re.M)
 
 INVARIANTS = [   # crafts/syseng/rules/invariants.md
     ("at-most-two-new", lambda: MAX_NEW == 2),
-    ("why-and-where-are-bold-labels", lambda: all(l.startswith("**") and l.endswith(":**") for l in (WHY_LINE, WHERE_LINE))),
+    ("why-line-is-a-label", lambda: WHY_LINE.endswith(":") and not WHY_LINE.startswith("**")),
     ("research-words-lowercase", lambda: all(w == w.lower() for w in RESEARCH_WORDS)),
     ("signature-names-no-product", lambda: not any(p in SIGNATURE for p in PRODUCTS)),
     ("signature-says-ai", lambda: "(AI)" in SIGNATURE),
@@ -90,7 +90,7 @@ def words(email: str) -> int:
     return len(re.findall(r"[A-Za-z0-9'’]+", email))
 
 
-def check(email: str, asked, skipped=(), sent: int = 0, ceiling: int = 20,
+def check(email: str, asked, skipped=(),
           q1_answered: bool = True, reask_q1: bool = False, said=()) -> list[str]:
     """The problems with an email before it is sent; empty means it may be sent."""
     asked, skipped = set(asked), set(skipped)
@@ -108,9 +108,10 @@ def check(email: str, asked, skipped=(), sent: int = 0, ceiling: int = 20,
         problems.append(f"skipped question asked again: {again}")
     if SIGNATURE not in email:
         problems.append("signature missing")
-    for line, what in ((WHY_LINE, "why"), (WHERE_LINE, "where")):
-        if not re.search(rf"^[ \t]*{re.escape(line)}[ \t]*\S", email, re.M):
-            problems.append(f"the {what} line missing: a line opening {line}")
+    if not re.search(rf"^[ \t]*(?:\*\*)?{re.escape(WHY_LINE)}(?:\*\*)?[ \t]*\S", email, re.M):
+        problems.append(f"the why line missing: a line opening {WHY_LINE}")
+    if not STOP.search(email):
+        problems.append("no stop line: say they can stop anytime")
     if WREN_IS_CLAUDE.search(email):
         problems.append("names Claude as what Wren is")
     if not q1_answered:
@@ -125,8 +126,6 @@ def check(email: str, asked, skipped=(), sent: int = 0, ceiling: int = 20,
     for block in P_BLOCK.findall(email):
         if P_FORBIDDEN.search(block):
             problems.append("profile block holds more than its fields")
-    if sent >= ceiling:
-        problems.append(f"email ceiling reached: {sent} sent of {ceiling}")
     return problems
 
 
@@ -142,7 +141,6 @@ def main(argv=None) -> int:
     g = sub.add_parser("gap"); g.add_argument("n", type=int)
     c = sub.add_parser("check"); c.add_argument("file")
     c.add_argument("--asked", default=""); c.add_argument("--skipped", default="")
-    c.add_argument("--sent", type=int, default=0); c.add_argument("--ceiling", type=int, default=20)
     c.add_argument("--q1-answered", action="store_true"); c.add_argument("--reask-q1", action="store_true")
     c.add_argument("--said", action="append", default=[])
     a = ap.parse_args(argv)
@@ -159,7 +157,7 @@ def main(argv=None) -> int:
     if a.cmd == "next":
         print(" ".join(f"Q{x}" for x in next_numbers(_ints(a.used), a.k)))
         return 0
-    problems = check(Path(a.file).read_text(), _ints(a.asked), _ints(a.skipped), a.sent, a.ceiling,
+    problems = check(Path(a.file).read_text(), _ints(a.asked), _ints(a.skipped),
                      a.q1_answered, a.reask_q1, a.said)
     for line in problems:
         print(line)
