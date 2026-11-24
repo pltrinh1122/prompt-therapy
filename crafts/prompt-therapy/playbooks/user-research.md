@@ -88,10 +88,16 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
 11. **Read the reply.** Split it into parts by `dmc:reply-reading`: labelled parts (`Q4: …`, `N1 yes`, `P yes`) by
     `scripts/thread.py parse`, the rest by judgement. A wish to stop, pause or take back consent is read first, by
     `dmc:consent`.
+    **Watch engagement** in every reply: its length, the time it took, and whether it asks questions of its own. Two
+    replies in a row each shorter than the one before bring the `fewer` outcome of `dmc:next-questions` and a
+    check-in: "Still useful for you? Happy to wrap up."
 12. **Decide the next act** by `dmc:research-session`. On an escalation, stop and ask the operator; send nothing until
     they answer.
-13. **Choose up to three questions** by `dmc:next-questions`, each with the next number from `scripts/thread.py next`.
-    A follow-up says which answer it builds on.
+13. **Choose two questions** by `dmc:next-questions`, each with the next number from `scripts/thread.py next`: one
+    **story** question ("Walk me through the last time…", a real event, step by step) and one **test** question, the
+    email's give-back (step 15), asked only on a subject they have already told in their own words. A follow-up says
+    which answer it builds on. Fewer, deeper questions: breadth is what tires a participant, and a story returns more
+    than a scoping question.
     - **The first questions are fixed**, after consent:
       > **Q1.** Which AI tools do you use at work, and what do you mostly use them for?
       >
@@ -104,22 +110,31 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
       `tools: not confirmed`. On an answer the record gains `tools: <as they named them> (confirmed <date>)`, and
       follow-ups name a tool only in their words.
     - **The profile question** comes in round 2, after the first stories, as one optional question with choices,
-      counted among that email's three:
+      counted among that email's two:
       > **Q4.** A few quick things about you, all optional: your role (for example staff, senior or manager), how many
       > years you've worked in your field (0–2, 3–5, 6–10, more), and how often you use AI tools at work (daily,
       > weekly, now and then).
-14. **Propose notes** by `dmc:note-capture`: each a new `N` number, one plain sentence. **Propose the profile**, once
+14. **Propose notes** by `dmc:note-capture`: each a new `N` number, one plain sentence, marked in the record
+    `spontaneous` (they raised it themselves) or `prompted` (it answers a test question); a prompted yes is weaker
+    evidence, so an idea Wren offered never passes for their own finding. **Propose the profile**, once
     the profile question is answered, by `dmc:participant-context`: one `P` block holding only the profile's fields
     (kind of work, role, years in a band, how often, which tools and for what).
 15. **Write the email** in this order, every time:
-    1. "Here's what I heard": one line per answered number; a new story with no number gets the next `Q` number here;
-    2. the notes and the profile to save (the format below);
-    3. new questions;
-    4. "Still open if you want them": skipped numbers, listed for two emails, then dropped;
-    5. "Reply under any number you like, for example `Q4: …`. Skip any you want.";
-    6. "Wren (AI), writing on behalf of [operator name]".
+    1. **Why and where**, two lines before anything else: `**This round:**` what this round is looking for, and
+       `**Where we are:**` roughly how far along ("about three short rounds left, or stop anytime"), always "about";
+    2. **the playback**, in email 6 and every third email after (9, 12, …): "What you've shown so far", three plain
+       bullets drawn only from their saved notes, never a hypothesis, and one line on how the notes will be used;
+    3. "Here's what I heard": one line per answered number; a new story with no number gets the next `Q` number here;
+    4. the notes and the profile to save (the format below);
+    5. the two new questions: the story, then the test, which is the **give-back**: one short idea from the knowledge
+       base that touches what they said, in plain words ("Other people have seen…"), always ending "Does that match
+       what you've seen, or not?" (`dmc:research-session`, offer);
+    6. "Still open if you want them": skipped numbers, listed for two emails, then dropped;
+    7. "Reply under any number you like, for example `Q4: …`. Skip any you want.";
+    8. "Wren (AI), writing on behalf of [operator name]".
 16. **Check it** with `scripts/thread.py check`:
-    - about 200 words at most, and at most three new questions, numbered next in turn;
+    - about 200 words at most, and at most two new questions, numbered next in turn;
+    - the why and where lines present, each opening its own line and saying something;
     - the signature present, and nothing naming Claude as what Wren is;
     - before Q1 is answered, no product named except in the participant's own words;
     - none of the research words (symptom, cause, root cause, anchor, why-tree, canon, node);
@@ -139,7 +154,8 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
       the nudge and end clocks, and wait for the operator. A corrected address comes by direct message only, never in a
       file, and needs a new participant id (step 3).
 18. **Save** each note the participant says yes to, in the record file: its number, date, `kept: yes <date>`, and the
-    knowledge-base entry it touches or the candidate it adds, in de-identified words. "No" saves nothing; "change it"
+    knowledge-base entry it touches or the candidate it adds, in de-identified words, and how it came:
+    `how: spontaneous` or `how: prompted` (step 14). "No" saves nothing; "change it"
     proposes the new wording under a new number. A profile they okay is written as `profile: <the block> (okayed
     <date>)` and replaces the operator's background block; a profile declined or skipped removes the background block
     too, since a person who declined to be described isn't described by anyone.
@@ -196,8 +212,8 @@ problems and what helps".
 | what a reply means for consent: to take part, to a note, to pause, to withdraw, to delete | `dmc:consent` |
 | Wren's next act in the thread | `dmc:research-session` |
 | how each part of a reply is read | `dmc:reply-reading` |
-| which questions to ask next, at most three | `dmc:next-questions` |
-| whether something becomes a note, and what kind | `dmc:note-capture` |
+| which questions to ask next, at most two: a story and a test | `dmc:next-questions` |
+| whether something becomes a note, what kind, and spontaneous or prompted | `dmc:note-capture` |
 | where a saved candidate goes afterwards | `dmc:feedback-route` |
 
 ## Questions
@@ -210,13 +226,17 @@ not `Y/N` questions, and authorize nothing. No email is a question to the operat
 - Consent's state and date; the tools as confirmed, or `not confirmed`; the profile's state.
 - Emails sent against the ceiling.
 - Questions asked, answered and skipped.
-- Notes proposed, saved and removed.
+- Notes proposed, saved and removed, each `spontaneous` or `prompted`.
+- Engagement: each reply's length and time to reply, its own questions, and every check-in sent.
 - Why-levels reached to what helped.
 - Stop signals honoured: all of them.
 - The record file, and each candidate's route.
 
 ## The email format
-- **Up to three questions per email**, each optional. The participant answers any, all or none.
+- **Two questions per email**, a story and a test, each optional. The participant answers any, all or none. The
+  fixed first three (step 13) came before this limit, and stay as they were asked.
+- **Every email says why and where** before its questions, and every third email from email 6 plays back what the
+  participant has shown so far (step 15). Every email gives one thing back and asks whether it holds.
 - **Numbered once, for the whole thread**, never renumbered. A follow-up says which answer it follows:
   `Q5 (about your answer to Q2)`.
 - **A skipped question** is listed once by number under "Still open if you want them", for two emails, then dropped.
@@ -243,6 +263,9 @@ not `Y/N` questions, and authorize nothing. No email is a question to the operat
 - **Length:** about 200 words at most.
 
 ## Example exchange (made up; "Sam" is not a real person, and nothing here is from any real email)
+The exchange shows the earlier form, up to three questions a round. From plan revision 22 each email also opens with
+the why and where lines, asks two questions (a story and a test), gives one thing back, and every third email from the
+sixth plays back the saved notes (step 15); the steps and records are what govern.
 Written before the fixed first questions and the profile question of step 13; where they differ, the steps win. The
 bracketed lines in italics are notes for the reader, and are never in an email. Round 0 is the invitation template.
 

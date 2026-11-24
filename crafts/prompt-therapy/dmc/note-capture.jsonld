@@ -12,12 +12,13 @@
   ],
   "identifier": "note-capture",
   "name": "Whether part of an answer becomes a research note",
-  "description": "Whether part of a participant's answer is proposed as a numbered note, and what kind, so only what the knowledge base can use is ever saved.",
+  "description": "Whether part of a participant's answer is proposed as a numbered note, what kind, and how it came (spontaneous or prompted), so only what the knowledge base can use is ever saved and an idea Wren offered never passes for the participant's own finding.",
   "dyad:decides": "Does this become a note, and what kind?",
   "dyad:inputs": [
     "the answer",
     "the knowledge base's entries and trees at the pinned commit",
-    "the notes already saved"
+    "the notes already saved",
+    "whether the answer came in their own account or in reply to a test question"
   ],
   "hasDefinedTerm": [
     {
@@ -25,14 +26,14 @@
       "termCode": "touches-canon",
       "name": "Matches a known entry",
       "dyad:when": "it matches an existing knowledge-base entry",
-      "dyad:then": "propose a note, naming that entry in the record and never in the email"
+      "dyad:then": "propose a note, naming that entry in the record and never in the email; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "candidate",
       "name": "A new candidate",
       "dyad:when": "no knowledge-base entry fits: a new symptom, cause, root cause or anchor",
-      "dyad:then": "propose a note, marked in the record as a candidate of that kind"
+      "dyad:then": "propose a note, marked in the record as a candidate of that kind; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence"
     },
     {
       "@type": "DefinedTerm",

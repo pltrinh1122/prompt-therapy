@@ -20,7 +20,8 @@
     "the emails sent so far against the ceiling",
     "the days since the last reply",
     "whether an escalation is open",
-    "any bounce naming the participant's address, newer than the last send"
+    "any bounce naming the participant's address, newer than the last send",
+    "the saved notes, and the number of this email"
   ],
   "hasDefinedTerm": [
     {
@@ -42,14 +43,14 @@
       "termCode": "explore",
       "name": "Explore the answers",
       "dyad:when": "consent given, and the reply answers something",
-      "dyad:then": "say back what was heard, propose notes, and ask up to three new questions"
+      "dyad:then": "open with the why line (what this round is looking for) and the where line (roughly how far along: \"about three short rounds left, or stop anytime\"); in email 6 and every third email after, play back what they have shown so far in three plain bullets drawn only from their saved notes, and how the notes will be used; say back what was heard, propose notes, give one thing back (offer), and ask at most two questions by dmc:next-questions"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "offer",
-      "name": "Offer ideas when asked",
-      "dyad:when": "the participant asks for ideas or advice",
-      "dyad:then": "first ask their own reason if not given; then share one or two ideas from the knowledge base as it stands, the participant's own saved notes included, as questions, saying it is not professional advice, never a diagnosis"
+      "name": "Give one thing back",
+      "dyad:when": "every exploring email, after the participant's own account; or the participant asks for ideas or advice",
+      "dyad:then": "share one short idea from the knowledge base as it stands, the participant's own saved notes included, that touches what they said, in plain words (\"Other people have seen…\"), always ending \"Does that match what you've seen, or not?\"; asked as the email's test question, never as professional advice or a diagnosis, never a hypothesis about them; when they ask for ideas, first ask their own reason if not given"
     },
     {
       "@type": "DefinedTerm",

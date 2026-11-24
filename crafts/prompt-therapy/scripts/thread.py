@@ -5,7 +5,8 @@ Three mechanical steps of the play-book, the same on every reply and every email
 - `parse`: the labelled parts of a reply (`Q4: …`, `N1 yes`, `P yes`), quoted earlier mail dropped;
   what is left is returned unlabelled, for judgement (`dmc:reply-reading`).
 - `next_numbers`: the next unused question numbers.
-- `check`: the problems in an email before it is sent (play-book step 16); empty means it may be sent.
+- `check`: the problems in an email before it is sent (play-book step 16); empty means it may be sent: at most two
+  new questions, and the why-and-where lines present (plan revision 22).
 - `watch_gap`: the n-th gap, in minutes, between watch checks after a send or a reply (play-book step 7).
 
 Usage:
@@ -25,7 +26,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "dyad" / "scripts")
 import dyadlib
 
 MAX_WORDS = 200
-MAX_NEW = 3
+MAX_NEW = 2
+WHY_LINE = "**This round:**"
+WHERE_LINE = "**Where we are:**"
 GAP_FIRST, GAP_CAP = 2, 64   # minutes: 2, 4, 8, 16, 32, then 64 and held
 SIGNATURE = "Wren (AI), writing on behalf of"
 RESEARCH_WORDS = ("symptom", "cause", "root cause", "anchor", "why-tree", "canon", "node")
@@ -38,7 +41,8 @@ P_FORBIDDEN = re.compile(r"\S+@\S+|\b\d+\s+years?\s+old\b|\bworks?\s+(at|for)\b|
 WROTE = re.compile(r"^On .+ wrote:\s*$", re.M)
 
 INVARIANTS = [   # crafts/syseng/rules/invariants.md
-    ("at-most-three-new", lambda: MAX_NEW == 3),
+    ("at-most-two-new", lambda: MAX_NEW == 2),
+    ("why-and-where-are-bold-labels", lambda: all(l.startswith("**") and l.endswith(":**") for l in (WHY_LINE, WHERE_LINE))),
     ("research-words-lowercase", lambda: all(w == w.lower() for w in RESEARCH_WORDS)),
     ("signature-names-no-product", lambda: not any(p in SIGNATURE for p in PRODUCTS)),
     ("signature-says-ai", lambda: "(AI)" in SIGNATURE),
@@ -104,6 +108,9 @@ def check(email: str, asked, skipped=(), sent: int = 0, ceiling: int = 20,
         problems.append(f"skipped question asked again: {again}")
     if SIGNATURE not in email:
         problems.append("signature missing")
+    for line, what in ((WHY_LINE, "why"), (WHERE_LINE, "where")):
+        if not re.search(rf"^[ \t]*{re.escape(line)}[ \t]*\S", email, re.M):
+            problems.append(f"the {what} line missing: a line opening {line}")
     if WREN_IS_CLAUDE.search(email):
         problems.append("names Claude as what Wren is")
     if not q1_answered:

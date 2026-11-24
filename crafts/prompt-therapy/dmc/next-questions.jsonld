@@ -12,14 +12,15 @@
   ],
   "identifier": "next-questions",
   "name": "Which questions go in the next research email",
-  "description": "Which questions, at most three, go in the next email of a research thread.",
-  "dyad:decides": "Which questions, at most three, go in the next email?",
+  "description": "Which questions, at most two, go in the next email of a research thread: one story question and one test question (plan revision 22).",
+  "dyad:decides": "Which questions, at most two, go in the next email?",
   "dyad:inputs": [
     "the answers so far, and how deep each has gone",
     "the open and skipped numbers",
     "the notes and profile saved",
     "the participant's pace",
-    "the operator's okayed background, used only to choose and word questions"
+    "the operator's okayed background, used only to choose and word questions",
+    "the engagement so far: each reply's length, the time it took, and whether it asked questions of its own"
   ],
   "hasDefinedTerm": [
     {
@@ -55,7 +56,21 @@
       "termCode": "profile",
       "name": "Ask the profile question",
       "dyad:when": "the second round, after their first stories, and no profile asked yet",
-      "dyad:then": "ask the one optional profile question with its choices, counted among the email's three"
+      "dyad:then": "ask the one optional profile question with its choices, counted among the email's two"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "story",
+      "name": "Ask for one story",
+      "dyad:when": "every exploring email, unless fewer applies",
+      "dyad:then": "ask one story question: \"Walk me through the last time…\", a real event, step by step, on the subject the email's why line names"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "test",
+      "name": "Test one idea",
+      "dyad:when": "the participant has already answered something on the subject, in their own account",
+      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base that touches what they said, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; never on a subject they have not yet told in their own words"
     },
     {
       "@type": "DefinedTerm",
@@ -75,11 +90,11 @@
       "@type": "DefinedTerm",
       "termCode": "fewer",
       "name": "Ask less",
-      "dyad:when": "replies are getting shorter or slower",
-      "dyad:then": "one question or none, and say they can stop anytime"
+      "dyad:when": "replies are getting shorter or slower, or two replies in a row are shorter than the one before",
+      "dyad:then": "one question or none, and a check-in: \"Still useful for you? Happy to wrap up.\""
     }
   ],
-  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then new-event; fewer caps the count; every question open, never yes-or-no, never leading, never a skipped number again, at most two follow-ups on one answer, at most three in all",
+  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then story, then test, then new-event; fewer caps the count; every question open, never yes-or-no except the test's \"does that match, or not?\", never leading, never a skipped number again, at most two follow-ups on one answer, at most two in all; the fixed first three are asked before this limit applied",
   "dyad:default": "deeper",
   "dyad:judgedBy": {
     "dyad:kind": "inference",

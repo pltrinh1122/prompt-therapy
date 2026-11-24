@@ -9,8 +9,11 @@ import thread
 SIG = "Wren (AI), writing on behalf of [operator name]"
 
 
-def email(body: str) -> str:
-    return f"{body}\n\nReply under any number you like, for example `Q4: …`. Skip any you want.\n\n{SIG}"
+WHY_WHERE = "**This round:** times a long session lost track.\n**Where we are:** about three short rounds left, or stop anytime."
+
+
+def email(body: str, why_where: str = WHY_WHERE) -> str:
+    return f"{why_where}\n\n{body}\n\nReply under any number you like, for example `Q4: …`. Skip any you want.\n\n{SIG}"
 
 
 class ParseTests(unittest.TestCase):
@@ -47,7 +50,7 @@ class ParseTests(unittest.TestCase):
 
 class NextTests(unittest.TestCase):
     def test_numbers_follow_the_highest(self):
-        self.assertEqual(thread.next_numbers([1, 2, 3, 7]), [8, 9, 10])
+        self.assertEqual(thread.next_numbers([1, 2, 3, 7]), [8, 9])
 
     def test_first_numbers(self):
         self.assertEqual(thread.next_numbers([], 3), [1, 2, 3])
@@ -81,6 +84,28 @@ class CheckTests(unittest.TestCase):
     def test_too_many_new_questions(self):
         e = email("**Q1.** a?\n**Q2.** b?\n**Q3.** c?\n**Q4.** d?")
         self.assertTrue(any("too many" in p for p in thread.check(e, asked=[])))
+
+    def test_three_new_questions_are_too_many(self):
+        e = email("**Q4.** Walk me through the last time it happened.\n**Q5.** b?\n**Q6.** c?")
+        self.assertTrue(any("too many" in p for p in thread.check(e, asked=[1, 2, 3])))
+
+    def test_one_story_and_one_test_pass(self):
+        e = email("**Q4.** Walk me through the last time it happened.\n\n"
+                  "**Q5.** Other people have seen this get worse late in a session. "
+                  "Does that match what you've seen, or not?")
+        self.assertEqual(thread.check(e, asked=[1, 2, 3]), [])
+
+    def test_why_line_required(self):
+        e = email("Thanks.", why_where="**Where we are:** about two rounds left.")
+        self.assertIn("the why line missing: a line opening **This round:**", thread.check(e, asked=[]))
+
+    def test_where_line_required(self):
+        e = email("Thanks.", why_where="**This round:** what planning looks like.")
+        self.assertIn("the where line missing: a line opening **Where we are:**", thread.check(e, asked=[]))
+
+    def test_an_empty_why_line_fails(self):
+        e = email("Thanks.", why_where="**This round:**\n**Where we are:** about two rounds left.")
+        self.assertTrue(any("why line missing" in p for p in thread.check(e, asked=[])))
 
     def test_new_questions_numbered_next(self):
         e = email("**Q6.** What happened?")
