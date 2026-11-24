@@ -1,0 +1,7 @@
+from: communicate-research-064fd978
+to: program
+row: 11
+kind: report
+sent: 2026-11-24T01:43:44Z
+body: PR #65 updated per plan revisions 25-29 and the cause-test strategy change. Play-book: the container (consent, privacy, never-rules, mail scope, no cap and no fixed end, escalation, watch, sources) and the engagement strategy with its one-line strategy-change report; a When it ends section (stop, silence after the nudge, fatigue check, break, standing check about every five emails, saturation, change of area, offer to wrap up); candidate notes held in the session for a running notes list; the email's default form from the pivot email (no summaries, two questions on new lines, give-backs from the knowledge base only); the cause test in step 13; the 20-email ceiling removed throughout. dmc:research-session gains notes-list, standing-check, fatigue-check, break, change-area and offer-wrap-up, and its end counts no emails; dmc:next-questions keeps one follow-up per answer, two new lines and gains cause-test; dmc:note-capture holds candidates. thread.py check: no email cap, a "Why I ask:" line and a stop line required. Head 9ef58259e632c1b0a2d3471451f10e1e94c45b3d, evidence-sha256 15aa17a233caa9afe743f9afce0d46598e5268b2ff6d36a6e2bc81f9e986e3fb (ok=148 warn=60 fail=0, every warning standing). Outreach: no reply and no bounce to email 6 at the 01:31Z and 01:36Z checks; the next check is at 01:46Z.
+writer: 064fd978-934d-5fc1-83b2-9e65f96eeabf
