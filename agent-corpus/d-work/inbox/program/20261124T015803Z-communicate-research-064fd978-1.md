@@ -1,0 +1,7 @@
+from: communicate-research-064fd978
+to: program
+row: 11
+kind: report
+sent: 2026-11-24T01:58:03Z
+body: PR #65 updated per plan revisions 30 and 31. Container: give-backs and causes may draw on general knowledge of AI tools, labelled as general and never as what other people have seen, one per email, saved as prompted; short snippets of his own prompts, rules or memory text in the email body, never attachments or client data; doubt escalates only where it touches a container item or the standing escalation list. New play-book section, Feedback on the process: the quick check, "You said X, so from now on Y", meta-questions first, a relay answered with "You can always tell me directly here too, and I'll adjust right away", and the in-thread against relayed count in every report. dmc:research-session gains close-loop, relay-received and quick-check; answer-service covers how the interview works; dmc:next-questions gains snippet and lets test and cause-test use general knowledge. Head 8afc9b493c91a36abb9ffeb636a503bf33afae62, evidence-sha256 723580aff0781d577b153a3a9de5b2aac5a7dea523ae2b50411eb383b16d9203 (ok=148 warn=60 fail=0, every warning standing). Feedback count: 0 in the thread, 3 relayed. No reply and no bounce to email 6 through the 01:46Z check; the next email will carry the quick-check and the invitation line once. No strategy change of my own since the cause test.
+writer: 064fd978-934d-5fc1-83b2-9e65f96eeabf
