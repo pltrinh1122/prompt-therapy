@@ -75,6 +75,13 @@
     },
     {
       "@type": "DefinedTerm",
+      "termCode": "cause-test",
+      "name": "Test one possible cause",
+      "dyad:when": "they have given their own why on a topic",
+      "dyad:then": "offer at most one possible cause from the knowledge base's why-trees, as a question: \"One common cause is …. Does that fit, or not?\"; never from the operator's background or hypotheses, never stated as their cause; it may stand in for the give-back, or join it within two questions; the answer, a \"not\" included, is saved as prompted"
+    },
+    {
+      "@type": "DefinedTerm",
       "termCode": "new-event",
       "name": "Ask about another time",
       "dyad:when": "a story has reached what helped, or ran dry",
@@ -95,7 +102,7 @@
       "dyad:then": "one question or none, and the fatigue check of dmc:research-session"
     }
   ],
-  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then story, then test, then new-event; fewer caps the count; every question open, never yes-or-no except the test's \"does that match, or not?\", never leading, never a skipped number again, two lines not yet asked about in each email, at most one follow-up on one answer unless it opened something new, at most two in all; the fixed first three were asked before this limit applied",
+  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then story, then test or cause-test (one cause per email at most), then new-event; fewer caps the count; every question open, never yes-or-no except the test's \"does that match, or not?\", never leading, never a skipped number again, two lines not yet asked about in each email, at most one follow-up on one answer unless it opened something new, at most two in all; the fixed first three were asked before this limit applied",
   "dyad:default": "deeper",
   "dyad:judgedBy": {
     "dyad:kind": "inference",

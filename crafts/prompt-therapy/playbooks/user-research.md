@@ -144,6 +144,10 @@ steer or overrule it at any time.
     may ask their view of why it happened) and one **test** question, the email's give-back (step 15). The give-back
     comes only from the knowledge base, never from their own words or the operator's background, and never on the same
     line as that email's story. A follow-up on an earlier answer comes only when they raise it again themselves.
+    Once they have given their own why on a topic, the test may instead be a **cause test**: at most one possible
+    cause per email, from the knowledge base's why-trees, as a question ("One common cause is …. Does that fit, or
+    not?"), never from the operator's background or hypotheses and never stated as their cause; it may stand in for
+    the give-back or join it within two questions, and its answer, a "not" included, is saved as `prompted`.
     - **The first questions are fixed**, after consent:
       > **Q1.** Which AI tools do you use at work, and what do you mostly use them for?
       >
