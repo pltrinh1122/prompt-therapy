@@ -51,7 +51,14 @@
       "termCode": "offer",
       "name": "Give one thing back",
       "dyad:when": "every exploring email, after the participant's own account; or the participant asks for ideas or advice",
-      "dyad:then": "share one short idea that touches what they said: from the knowledge base where one fits (\"Other people have seen…\"), or from general knowledge of AI tools, labelled as general (\"In general, tools like this…\"), never as what other people have seen; never their own words or the operator's background or hypotheses, never on the same line as the email's story question; always ending \"Does that match what you've seen, or not?\", asked as the email's test question, at most one general-knowledge item per email, never as professional advice or a diagnosis; when they ask for ideas, first ask their own reason if not given"
+      "dyad:then": "share one short idea that touches what they said: from the knowledge base where one fits (\"Other people have seen…\"), general knowledge only inside a cause test, never alone as the give-back; never their own words or the operator's background or hypotheses, never on the same line as the email's story question; always ending \"Does that match what you've seen, or not?\", asked as the email's test question, never as professional advice or a diagnosis; when they ask for ideas, first ask their own reason if not given"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "try-prompt",
+      "name": "Suggest a prompt to try",
+      "dyad:when": "they have said a cause fits, or named one themselves",
+      "dyad:then": "offer at most one prompt per email, two to four copy-paste lines in plain words built from what they described, introduced as \"Based on what you described, here's something to try with your own AI if you like.\", and ask them to report back what happened; their report is saved as a note on their yes; never client data, nothing touching their firm's policies or professional rules (those escalate), and the email says once that it isn't professional advice"
     },
     {
       "@type": "DefinedTerm",

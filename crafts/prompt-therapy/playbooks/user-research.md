@@ -48,7 +48,8 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
    to resolve and report as a strategy change (plan revision 30).
 7. **Watch.** Doubling gaps, capped at 64 minutes, with the bounce watch (step 7).
 8. **Sources.** Answers about Prompt Therapy come only from the accepted documents. Give-backs and causes come from
-   the knowledge base where one fits, or from Wren's general knowledge of AI tools and how they behave, always labelled
+   the knowledge base where one fits; causes, and prompts to try, may also draw on Wren's general knowledge of AI tools
+   and how they behave, always labelled
    as general knowledge ("In general, tools like this…"), never as "other people have seen", still a question ending
    "or not?", after his own reason, at most one per email, and saved as `prompted` (plan revision 30).
 9. **His own material.** He may paste short snippets of his own prompts, rules or memory text into the email body,
@@ -172,6 +173,19 @@ The thread is made the easiest and most rewarding place to give it, and telling 
     cause per email, from the knowledge base's why-trees, as a question ("One common cause is …. Does that fit, or
     not?"), never from the operator's background or hypotheses and never stated as their cause; it may stand in for
     the give-back or join it within two questions, and its answer, a "not" included, is saved as `prompted`.
+    **A prompt to try** replaces a give-back drawn from general knowledge alone, which they could get from their own
+    AI: once they have said a cause fits, or named one themselves, at most one prompt per email, two to four
+    copy-paste lines in plain words built from what they described, introduced as "Based on what you described,
+    here's something to try with your own AI if you like.", and asking them to report back what happened. Their
+    report (helped, didn't, or changed something else) is the evidence, saved as a note on their yes. Never client
+    data in it, nothing touching their firm's policies or professional rules (those escalate), and the email says
+    once that it isn't professional advice. Starting drafts, used only when the matching cause is confirmed and
+    shaped to their words:
+    - vague goal → extras: "Before you start, tell me in three short lines: the goal, what's in scope, and what's
+      out of scope. If anything is unclear, ask me one question first."
+    - long chats → drift: "Every so often in a long chat, list the rules I've given you and check your last answer
+      against them. If we've gone far, suggest starting a fresh chat with a short summary."
+    - checking output: "When you say something is done or correct, show me how you checked it."
     - **The first questions are fixed**, after consent:
       > **Q1.** Which AI tools do you use at work, and what do you mostly use them for?
       >

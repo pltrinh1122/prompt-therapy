@@ -71,7 +71,7 @@
       "termCode": "test",
       "name": "Test one idea",
       "dyad:when": "every exploring email, unless fewer applies",
-      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base where one fits, or from general knowledge of AI tools labelled as general (never \"other people have seen\"), never their own words or the operator's background, on a line not yet asked about and not the story's, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; a \"not\" is evidence too"
+      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base, never general knowledge alone and never their own words or the operator's background, on a line not yet asked about and not the story's, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; a \"not\" is evidence too"
     },
     {
       "@type": "DefinedTerm",
