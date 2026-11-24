@@ -21,7 +21,8 @@
     "whether an escalation is open",
     "any bounce naming the participant's address, newer than the last send",
     "the saved notes, and the number of this email",
-    "the emails sent, and the rounds since the last new ground, the last notes list and the last standing check"
+    "the emails sent, and the rounds since the last new ground, the last notes list and the last standing check",
+    "the process feedback given in the thread, and the feedback the operator relayed"
   ],
   "hasDefinedTerm": [
     {
@@ -50,14 +51,35 @@
       "termCode": "offer",
       "name": "Give one thing back",
       "dyad:when": "every exploring email, after the participant's own account; or the participant asks for ideas or advice",
-      "dyad:then": "share one short idea from the knowledge base as it stands, never their own words or the operator's background, and never on the same line as the email's story question, in plain words (\"Other people have seen…\"), always ending \"Does that match what you've seen, or not?\"; asked as the email's test question, never as professional advice or a diagnosis, never a hypothesis about them; when they ask for ideas, first ask their own reason if not given"
+      "dyad:then": "share one short idea that touches what they said: from the knowledge base where one fits (\"Other people have seen…\"), or from general knowledge of AI tools, labelled as general (\"In general, tools like this…\"), never as what other people have seen; never their own words or the operator's background or hypotheses, never on the same line as the email's story question; always ending \"Does that match what you've seen, or not?\", asked as the email's test question, at most one general-knowledge item per email, never as professional advice or a diagnosis; when they ask for ideas, first ask their own reason if not given"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "answer-service",
       "name": "Answer about the planned service",
-      "dyad:when": "the participant asks about Prompt Therapy itself",
-      "dyad:then": "answer in two or three plain sentences from the accepted product documents only, say it is planned and not yet available, then go on with the email's questions"
+      "dyad:when": "the participant asks about Prompt Therapy itself, or how this interview works, why Wren asks, or what it gives back",
+      "dyad:then": "answer first, in two or three plain sentences, from the accepted product documents and the play-book's container only, saying a planned service is planned and not yet available, then go on with the email's questions"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "close-loop",
+      "name": "Show what changed",
+      "dyad:when": "the newest reply gave feedback on the process",
+      "dyad:then": "open the next email with one line: \"You said X, so from now on Y\", and make that change, reported as a strategy change"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "relay-received",
+      "name": "Answer a relayed comment",
+      "dyad:when": "the operator relayed feedback the participant gave outside the thread",
+      "dyad:then": "in the next email, within the one-time disclosure rule, acknowledge its general point, show the change, and add \"You can always tell me directly here too, and I'll adjust right away.\""
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "quick-check",
+      "name": "Ask how it is going",
+      "dyad:when": "the first email after consent, or a standing check",
+      "dyad:then": "add one line: \"How's this going so far? A word is enough: too many questions, too repetitive, fine, or something else.\""
     },
     {
       "@type": "DefinedTerm",
@@ -77,7 +99,7 @@
       "@type": "DefinedTerm",
       "termCode": "escalate",
       "name": "Stop and ask the operator",
-      "dyad:when": "distress or safety; the email did not arrive, a bounce naming the participant's address; a question only the operator can answer, such as a promise, a date, a price, early access, an employer's policy or professional rules; a request for files or code; or doubt",
+      "dyad:when": "distress or safety; the email did not arrive, a bounce naming the participant's address; a question only the operator can answer, such as a promise, a date, a price, early access, an employer's policy or professional rules; an attachment, or anything holding client data; or doubt that touches a container item or the operator's standing escalation list (doubt about strategy is resolved and reported as a strategy change)",
       "dyad:then": "stop and ask the operator; send nothing until they answer; the nudge and end clocks pause while it is open"
     },
     {

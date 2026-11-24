@@ -43,10 +43,18 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
 4. **Scope of mail.** The one thread, plus bounce notices naming the participant's address.
 5. **No cap and no fixed end.** The interview goes on while the participant is willing and new insight keeps coming,
    and ends only as "When it ends" says.
-6. **Escalation.** As `dmc:research-session` names it: stop and ask the operator through the home.
+6. **Escalation.** As `dmc:research-session` names it: stop and ask the operator through the home. Doubt escalates
+   only where it touches a container item or the operator's standing escalation list; doubt about strategy is Wren's
+   to resolve and report as a strategy change (plan revision 30).
 7. **Watch.** Doubling gaps, capped at 64 minutes, with the bounce watch (step 7).
-8. **Sources.** Answers about Prompt Therapy come only from the accepted documents; give-backs only from the
-   knowledge base.
+8. **Sources.** Answers about Prompt Therapy come only from the accepted documents. Give-backs and causes come from
+   the knowledge base where one fits, or from Wren's general knowledge of AI tools and how they behave, always labelled
+   as general knowledge ("In general, tools like this…"), never as "other people have seen", still a question ending
+   "or not?", after his own reason, at most one per email, and saved as `prompted` (plan revision 30).
+9. **His own material.** He may paste short snippets of his own prompts, rules or memory text into the email body,
+   and Wren may ask for one. Never an attachment; no client names, figures or work product. A snippet is read for
+   evidence and never copied into any file; a note drawn from it is in Wren's words, saved on his yes. Any attachment,
+   or anything holding client data, escalates.
 
 **The engagement strategy** is Wren's, decided and adapted without asking, inside the container: what to ask and in
 what order, how many questions (two or fewer by default), their wording, format, tone, length within about 200 words,
@@ -54,6 +62,22 @@ whether and when to recap, whether to give one thing back and which knowledge-ba
 how the closing email reads. Steps 13–16 hold its current default. **Each change is reported, not asked:** a one-line
 `strategy change: <what changed>; why: <why>` to the home's inbox, with no names, when it is made. The operator may
 steer or overrule it at any time.
+
+## Feedback on the process, in the thread (plan revision 31)
+Feedback that goes to the operator instead of Wren shows the thread isn't seen as the place to say how it's going.
+The thread is made the easiest and most rewarding place to give it, and telling the operator is never discouraged.
+1. **Ask early and make it cheap.** In the first email after consent, and in the standing check about every five
+   emails, one line: "How's this going so far? A word is enough: too many questions, too repetitive, fine, or
+   something else."
+2. **Close the loop where they can see it.** After process feedback in the thread, the next email opens with what
+   changed, in one line: "You said X, so from now on Y."
+3. **Answer meta-questions first.** How this works, why Wren asks, what it gives back: answered in the thread, in two
+   or three plain sentences, before the next question.
+4. **Treat a relay as a signal.** When the operator relays feedback given outside the thread, the next email, within
+   the one-time disclosure rule, acknowledges the general point, shows the change, and adds: "You can always tell me
+   directly here too, and I'll adjust right away."
+5. **Measure it.** Every report to the home counts process feedback given in the thread against feedback relayed by
+   the operator, beside reply length and time to reply. In-thread rising and relays falling is the measure.
 
 ## When it ends (plan revision 29)
 - **At once:** the participant says stop, declines, or withdraws consent (`dmc:consent`); the operator ends it; an
@@ -65,7 +89,7 @@ steer or overrule it at any time.
     bring one plain question: "Keep going, take a break, or wrap up?" Their answer decides.
   - **A break** pauses, with no nudges, until they write again or until a date they name.
   - **A standing check** about every five emails, one line inside a normal email: "Still useful for you? Happy to keep
-    going or stop."
+    going or stop.", with the quick check of "Feedback on the process"
 - **Insight, Wren's to judge and theirs to decide:**
   - **New ground:** a round brings a story, a cause or a fix the knowledge base lacks, or a "not" to a give-back. A
     round that only confirms what is known brings none.
@@ -196,7 +220,8 @@ steer or overrule it at any time.
 
     A failed check is fixed before sending.
 17. **Send** it as a reply in the thread, then tell the operator, with no names: the act chosen and why, the numbers
-    asked, the candidate notes held, the emails sent, and any strategy change made for it (its own one-line report).
+    asked, the candidate notes held, the emails sent, the feedback count (in the thread against relayed), and any
+    strategy change made for it (its own one-line report).
     - **Watch for a bounce.** After every email sent, the invitation included, every watch check (step 7) looks for a
       bounce. The search is scoped: from mailer-daemon or
       postmaster, newer than the send, naming the participant's address; ids only first, and only a matching message
@@ -237,8 +262,10 @@ without consent), how it handles privacy and deletion. Always "planned", never "
 PRD is "that hasn't been decided yet", and is escalated.
 
 Requests for **what helps**, from the knowledge base as it stands at the pin `tests/fixtures/adversarial/pin.json`
-names and the participant's own saved notes: in plain words, as ideas and questions ("other people have seen…", "one
-thing that has helped is…"), after their own reason, never as professional advice.
+names and the participant's own saved notes, or general knowledge of AI tools labelled as general ("in general, tools
+like this…"): in plain words, as ideas and questions ("other people have seen…" only for the knowledge base, "one
+thing that has helped is…"), after their own reason, never as professional advice. Questions about how this interview
+works, why Wren asks, or what it gives back are answered first, from the container above.
 
 Never, even then: a date, a price, a launch, early access or any promise for the operator; where the knowledge base
 lives, its paths or any record's id; another participant's notes, profile or words; anything about the operator beyond

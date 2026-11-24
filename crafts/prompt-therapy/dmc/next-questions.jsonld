@@ -71,14 +71,21 @@
       "termCode": "test",
       "name": "Test one idea",
       "dyad:when": "every exploring email, unless fewer applies",
-      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base only, never their own words or the operator's background, on a line not yet asked about and not the story's, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; a \"not\" is evidence too"
+      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base where one fits, or from general knowledge of AI tools labelled as general (never \"other people have seen\"), never their own words or the operator's background, on a line not yet asked about and not the story's, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; a \"not\" is evidence too"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "cause-test",
       "name": "Test one possible cause",
       "dyad:when": "they have given their own why on a topic",
-      "dyad:then": "offer at most one possible cause from the knowledge base's why-trees, as a question: \"One common cause is …. Does that fit, or not?\"; never from the operator's background or hypotheses, never stated as their cause; it may stand in for the give-back, or join it within two questions; the answer, a \"not\" included, is saved as prompted"
+      "dyad:then": "offer at most one possible cause from the knowledge base's why-trees, or from general knowledge labelled as general, as a question: \"One common cause is …. Does that fit, or not?\"; never from the operator's background or hypotheses, never stated as their cause; it may stand in for the give-back, or join it within two questions; the answer, a \"not\" included, is saved as prompted"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "snippet",
+      "name": "Ask for a snippet",
+      "dyad:when": "a story turns on the exact words of their own prompt, rule or memory text",
+      "dyad:then": "ask them to paste a short snippet of their own text into the email, never an attachment, never client names, figures or work product; it is read for evidence and never copied into a file"
     },
     {
       "@type": "DefinedTerm",
