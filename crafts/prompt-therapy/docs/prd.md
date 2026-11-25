@@ -11,21 +11,37 @@ words, each entry rooted in a **why-tree** that walks from the symptom through i
 the reader cares at all.
 
 ## Positioning
-Prompt Therapy's competition is not traditional software. It is the general-purpose agents people already use, Claude
-Code and others like it, which get more capable with every release. The test for anything Prompt Therapy builds: if a
-general agent can simply be prompted to do it, there is no reason to build it.
+Prompt Therapy is not a tool, and it does not compete with tools. It is a service that gives people insight into what
+they observed an AI agent do, drawn from what other people observed.
 
-What survives that test is an understanding of how people struggle to use AI agents: what they see go wrong, why it
-happens, and what helps. That knowledge comes from many people's experience, and an agent working for one user does not
-have it. Agents may not address it soon, if ever.
+Its competition is a general-purpose agent used out of the box, Claude Code and others like it. Asked why something went
+wrong, such an agent can already infer a likely root cause, and it gets better at it with every release. What it cannot
+show is where that answer comes from: whether anything behind it came from people who struggled the same way, how many
+of them there were, and whether they would put it the same way. The user gets a conclusion with no evidence they can
+inspect.
+
+Prompt Therapy's difference is the provenance of its evidence. Every pattern it offers is tagged with its sources:
+first-hand observations from real users, each kept only with that user's consent, in words that user confirmed, and
+counted, so a user can see how many people reported it and when. The service gathers that evidence as it runs. Every
+consented conversation adds one observation in the user's own words and the root cause the user confirmed at the end of
+the walk, so each entry's sources grow with use. The difference holds for as long as a general agent cannot show the
+same.
 
 For v1.0 this means:
-- the value is the knowledge base: patterns drawn from many people, walked as a why-tree, with causes offered only as
-  hypotheses. Generic advice an agent could give unprompted is not the product;
-- each conversation should leave the user with something to carry back to their own agent: a cause they recognise, and
-  a prompt or practice to try;
-- when general agents start handling a pattern themselves, that entry's value falls. The operate and evolve play-books
-  watch for this (`dmc:feedback-route`, `dmc:service-retire`).
+- each canon entry the walk offers shows its sources: how many people reported it, their observation ids and when,
+  never who (see Never). An entry with one source says so;
+- a cause is offered as a hypothesis together with that evidence, never on the agent's say-so. Advice with no source
+  behind it is not the product;
+- "certified" means only what the record shows: a first-hand observation, consented, in the reporter's own words, with
+  the root cause the reporter confirmed, de-identified. No outside body certifies anything, and the service never
+  claims more;
+- each kept walk records whether the confirmed cause was the user's own answer or a hypothesis the walk offered and the
+  user took. The two count separately, because an offered cause that was accepted is weaker evidence than one the user
+  named;
+- the walk still ends with something to carry back to one's own agent: a cause the user recognises, and a prompt or
+  practice to try;
+- if general agents start showing consented first-hand evidence for a pattern, that entry's difference falls. The
+  operate and evolve play-books watch for this (`dmc:feedback-route`, `dmc:service-retire`).
 
 ## The product
 A chat service. A user brings what they saw an agent do, in their own words. The agent:
@@ -51,8 +67,8 @@ The harness of P2 fails a walk that does any of these, so the product must never
 Conversations are the reason this is its own dyad system: they carry names, work and feelings, and dyad-system is public.
 - A conversation lives in the service's own store, never in any repository, log or fixture.
 - Without consent, a conversation is deleted when the session ends.
-- With consent, only the symptom in the user's words and the matched canon ids are kept, de-identified; the transcript is
-  not. The user can withdraw consent and have it deleted.
+- With consent, only the symptom in the user's words, the matched canon ids, the anchor the user confirmed, and whether
+  that cause was the user's own or offered are kept, de-identified; the transcript is not. The user can withdraw consent and have it deleted.
 - The retention period of kept symptoms is the operator's decision, stated before P1's service ships (open question 1).
 
 ## The hand-up
@@ -67,3 +83,8 @@ Accounts, a forum, more than one language, voice, and any provider but a fake on
 1. How long a consented symptom is kept.
 2. Whether a user may continue a walk in a later session (needs an identifier; v1.0 says no).
 3. Whether the service runs public or invite-only at first.
+4. Whether people value seeing where the evidence comes from. The positioning rests on it, and it is unproven: the
+   user-research play-book tests it before v1.0 ships, and the running service can test it too, by whether users look
+   at an entry's sources.
+5. Whether a reporter's confirmed words may be shown to other users, or only counted. v1.0 shows counts, ids and dates
+   alone, because consent today covers keeping the words, not showing them.
