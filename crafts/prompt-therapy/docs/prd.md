@@ -10,6 +10,23 @@ what they saw, and less often for why it happened. dyad-system keeps a **symptom
 words, each entry rooted in a **why-tree** that walks from the symptom through its causes to an **anchor**, the reason
 the reader cares at all.
 
+## Positioning
+Prompt Therapy's competition is not traditional software. It is the general-purpose agents people already use, Claude
+Code and others like it, which get more capable with every release. The test for anything Prompt Therapy builds: if a
+general agent can simply be prompted to do it, there is no reason to build it.
+
+What survives that test is an understanding of how people struggle to use AI agents: what they see go wrong, why it
+happens, and what helps. That knowledge comes from many people's experience, and an agent working for one user does not
+have it. Agents may not address it soon, if ever.
+
+For v1.0 this means:
+- the value is the knowledge base: patterns drawn from many people, walked as a why-tree, with causes offered only as
+  hypotheses. Generic advice an agent could give unprompted is not the product;
+- each conversation should leave the user with something to carry back to their own agent: a cause they recognise, and
+  a prompt or practice to try;
+- when general agents start handling a pattern themselves, that entry's value falls. The operate and evolve play-books
+  watch for this (`dmc:feedback-route`, `dmc:service-retire`).
+
 ## The product
 A chat service. A user brings what they saw an agent do, in their own words. The agent:
 1. **matches** it to the canon's closest entries and asks the user which one fits, or none;
