@@ -207,7 +207,12 @@ The thread is made the easiest and most rewarding place to give it, and telling 
     idea Wren offered never passes for their own finding. A yes in a reply they sent counts as their consent whoever
     drafted it; a note from a reply their own AI drafted is tagged `via: agent-drafted` and counted apart from
     first-hand notes, noted `corroborated` where their own earlier replies make the same point, and an echo of Wren's
-    own email is no evidence of an effect (plan revision 32). They are held in the session, never in a file, and rebuilt
+    own email is no evidence of an effect (plan revision 32). Every note is in one of three counts: `first-hand`;
+    `agent-drafted, confirmed`, when he answered its running-list check; `agent-drafted, unconfirmed` otherwise (plan
+    revision 33). Four human check-points keep the counts honest: **H1**, the running notes list asks of each
+    agent-drafted note "is this true of you? a yes or a few words of your own", batched; **H2**, on an echo, ask once
+    for one specific moment in his own words; **H3**, on a conflict with his first-hand replies, ask which is right;
+    **H4**, consent and its changes come from him only. They are held in the session, never in a file, and rebuilt
     from the thread if the session is replaced. They are not shown mid-email: the **running notes list**, about every
     five emails and before any wrap-up or break, lists the new ones, numbered, quoted exactly, for a yes or no each. **Propose the profile**, once
     the profile question is answered, by `dmc:participant-context`: one `P` block holding only the profile's fields
@@ -222,7 +227,9 @@ The thread is made the easiest and most rewarding place to give it, and telling 
     5. the two new questions: the story, then the test, the **give-back**: one short idea from the knowledge base in
        plain words ("Other people have seen…"), always ending "Does that match what you've seen, or not?"; a "not" is
        evidence too;
-    6. about every five emails, the running notes list and the standing check ("When it ends");
+    6. about every five emails, the running notes list and the standing check ("When it ends"); optionally, at most
+       once every few rounds, the **provenance request**: what an answer rests on (a line he wrote, quoted, or roughly
+       when), read as a claim and never copied into a file;
     7. "Short answers are fine."; and the signature, "Wren (AI), writing on behalf of [operator name]".
 16. **Check it** with `scripts/thread.py check`:
     - about 200 words at most, and at most two new questions, numbered next in turn;
@@ -249,7 +256,8 @@ The thread is made the easiest and most rewarding place to give it, and telling 
       file, and needs a new participant id (step 3).
 18. **Save** each note the participant says yes to, in the record file: its number, date, `kept: yes <date>`, and the
     knowledge-base entry it touches or the candidate it adds, in de-identified words, and how it came:
-    `how: spontaneous` or `how: prompted` (step 14). "No" saves nothing; "change it"
+    `how: spontaneous` or `how: prompted` (step 14), with its `via:` and its `count:` (one of the three, step 14).
+    "No" saves nothing; "change it"
     proposes the new wording under a new number. A profile they okay is written as `profile: <the block> (okayed
     <date>)` and replaces the operator's background block; a profile declined or skipped removes the background block
     too, since a person who declined to be described isn't described by anyone.
@@ -324,7 +332,8 @@ not `Y/N` questions, and authorize nothing. No email is a question to the operat
 - Consent's state and date; the tools as confirmed, or `not confirmed`; the profile's state.
 - Emails sent, and every strategy change reported.
 - Questions asked, answered and skipped.
-- Notes proposed, saved and removed, each `spontaneous` or `prompted`.
+- Notes proposed, saved and removed, each `spontaneous` or `prompted`, in three counts: first-hand, agent-drafted
+  confirmed, agent-drafted unconfirmed; echoes listed apart, as no evidence of an effect.
 - Engagement: each reply's length and time to reply, its own questions, and every check-in sent.
 - Why-levels reached to what helped.
 - Stop signals honoured: all of them.

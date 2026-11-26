@@ -114,7 +114,7 @@
       "termCode": "notes-list",
       "name": "Send the running notes list",
       "dyad:when": "about five emails since the last list, or before any wrap-up or break, and candidates are held",
-      "dyad:then": "list the new candidate notes, numbered and quoted exactly, for a yes or no each; nothing is saved without its yes"
+      "dyad:then": "list the new candidate notes, numbered and quoted exactly, for a yes or no each; nothing is saved without its yes; a note from a reply his own AI drafted is asked 'is this true of you? a yes or a few words of your own' (check-point H1), batched in the one list; on an echo of Wren's own email, ask once for one specific moment in his own words (H2); on a conflict with his first-hand replies, ask which is right (H3); consent changes come from him only (H4)"
     },
     {
       "@type": "DefinedTerm",
