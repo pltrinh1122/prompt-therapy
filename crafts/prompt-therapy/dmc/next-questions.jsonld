@@ -1,0 +1,121 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/next-questions",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "next-questions",
+  "name": "Which questions go in the next research email",
+  "description": "Which questions, at most two, go in the next email of a research thread: one story question and one test question (plan revision 22).",
+  "dyad:decides": "Which questions, at most two, go in the next email?",
+  "dyad:inputs": [
+    "the answers so far, and how deep each has gone",
+    "the open and skipped numbers",
+    "the notes and profile saved, and the candidates held",
+    "the participant's pace",
+    "the operator's okayed background, used only to choose and word questions",
+    "the engagement so far: each reply's length, the time it took, and whether it asked questions of its own",
+    "the lines already asked about"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "first-three",
+      "name": "The fixed first questions",
+      "dyad:when": "consent was just given",
+      "dyad:then": "ask the play-book's three fixed first questions, the first of which asks which AI tools are used and for what"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "tool-again",
+      "name": "Ask the tool once more",
+      "dyad:when": "the question about which tools was skipped, and not asked again yet",
+      "dyad:then": "ask it once more, in other words, as its own line; the only question that may be asked twice"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "deeper",
+      "name": "Go one level deeper",
+      "dyad:when": "they raised an earlier answer again themselves, and it has not reached what would have helped",
+      "dyad:then": "ask one follow-up, naming the number it follows; a second on the same answer only if the first opened something new"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "anchor-check",
+      "name": "Ask what would have helped",
+      "dyad:when": "an answer names what helped or would have helped",
+      "dyad:then": "ask what would have stopped it happening, in their words"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "profile",
+      "name": "Ask the profile question",
+      "dyad:when": "the second round, after their first stories, and no profile asked yet",
+      "dyad:then": "ask the one optional profile question with its choices, counted among the email's two"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "story",
+      "name": "Ask for one story",
+      "dyad:when": "every exploring email, unless fewer applies, on a line not yet asked about",
+      "dyad:then": "ask one story question: \"Tell me about the last time…\", a real event, which may ask their view of why it happened"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "test",
+      "name": "Test one idea",
+      "dyad:when": "every exploring email, unless fewer applies",
+      "dyad:then": "ask the email's give-back as the second question: one idea from the knowledge base, never general knowledge alone and never their own words or the operator's background, on a line not yet asked about and not the story's, in plain words (\"Other people have seen…\"), ending \"Does that match what you've seen, or not?\"; a \"not\" is evidence too"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "cause-test",
+      "name": "Test one possible cause",
+      "dyad:when": "they have given their own why on a topic",
+      "dyad:then": "offer at most one possible cause from the knowledge base's why-trees, or from general knowledge labelled as general, as a question: \"One common cause is …. Does that fit, or not?\"; never from the operator's background or hypotheses, never stated as their cause; it may stand in for the give-back, or join it within two questions; the answer, a \"not\" included, is saved as prompted"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "snippet",
+      "name": "Ask for a snippet",
+      "dyad:when": "a story turns on the exact words of their own prompt, rule or memory text",
+      "dyad:then": "ask them to paste a short snippet of their own text into the email, never an attachment, never client names, figures or work product; it is read for evidence and never copied into a file"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "new-event",
+      "name": "Ask about another time",
+      "dyad:when": "a story has reached what helped, or ran dry",
+      "dyad:then": "ask about a different time or a different kind of task"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "clarify",
+      "name": "Ask which number it was",
+      "dyad:when": "a heard line was a guess",
+      "dyad:then": "ask which number it was for"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "fewer",
+      "name": "Ask less",
+      "dyad:when": "replies are getting shorter or slower, or two replies in a row are shorter than the one before",
+      "dyad:then": "one question or none, and the fatigue check of dmc:research-session"
+    }
+  ],
+  "dyad:precedence": "clarify, then first-three, then tool-again, then deeper, then anchor-check, then profile, then story, then test or cause-test (one cause per email at most), then new-event; fewer caps the count; every question open, never yes-or-no except the test's \"does that match, or not?\", never leading, never a skipped number again, two lines not yet asked about in each email, at most one follow-up on one answer unless it opened something new, at most two in all; the fixed first three were asked before this limit applied",
+  "dyad:default": "deeper",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}

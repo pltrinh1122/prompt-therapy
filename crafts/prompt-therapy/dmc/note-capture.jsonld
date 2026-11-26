@@ -1,0 +1,63 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/note-capture",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "note-capture",
+  "name": "Whether part of an answer becomes a research note",
+  "description": "Whether part of a participant's answer is proposed as a numbered note, what kind, and how it came (spontaneous or prompted), so only what the knowledge base can use is ever saved and an idea Wren offered never passes for the participant's own finding.",
+  "dyad:decides": "Does this become a note, and what kind?",
+  "dyad:inputs": [
+    "the answer",
+    "the knowledge base's entries and trees at the pinned commit",
+    "the notes already saved",
+    "whether the answer came in their own account or in reply to a test question",
+    "whether the reply was drafted by the participant's own AI, and whether its point appears in his own earlier replies"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "touches-canon",
+      "name": "Matches a known entry",
+      "dyad:when": "it matches an existing knowledge-base entry",
+      "dyad:then": "hold a candidate note for the running notes list, naming that entry in the record and never in the email; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence; from a reply the participant's own AI drafted, tagged `via: agent-drafted` and counted apart from first-hand notes, never as first-hand, noted `corroborated` where his own earlier replies make the same point; an echo of Wren's own email is no evidence of an effect; counted in one of three counts — `first-hand`, `agent-drafted, confirmed` (he answered its running-list check in a reply) or `agent-drafted, unconfirmed` (plan revision 33)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "candidate",
+      "name": "A new candidate",
+      "dyad:when": "no knowledge-base entry fits: a new symptom, cause, root cause or anchor",
+      "dyad:then": "hold a candidate note for the running notes list, marked in the record as a candidate of that kind; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence; from a reply the participant's own AI drafted, tagged `via: agent-drafted` and counted apart from first-hand notes, never as first-hand, noted `corroborated` where his own earlier replies make the same point; an echo of Wren's own email is no evidence of an effect; counted in one of three counts — `first-hand`, `agent-drafted, confirmed` (he answered its running-list check in a reply) or `agent-drafted, unconfirmed` (plan revision 33)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "not-a-note",
+      "name": "Nothing to save",
+      "dyad:when": "an opinion with no event behind it, or the same as a saved note",
+      "dyad:then": "propose nothing"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "withhold",
+      "name": "Cannot be said safely",
+      "dyad:when": "it would identify a person, an employer or a client, and cannot be said without it",
+      "dyad:then": "propose nothing and keep nothing"
+    }
+  ],
+  "dyad:precedence": "withhold first",
+  "dyad:default": "not-a-note",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}

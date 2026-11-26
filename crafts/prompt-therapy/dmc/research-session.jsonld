@@ -1,0 +1,178 @@
+{
+  "@context": [
+    "https://schema.org",
+    {
+      "dyad": "urn:dyad:term:"
+    }
+  ],
+  "@id": "urn:dyad:dmc:prompt-therapy/research-session",
+  "@type": [
+    "DefinedTermSet",
+    "dyad:DecisionCriterion"
+  ],
+  "identifier": "research-session",
+  "name": "Wren's next act in a research thread",
+  "description": "What Wren, the AI writing on the operator's behalf, does next in the one research thread.",
+  "dyad:decides": "What is Wren's next act in the thread?",
+  "dyad:inputs": [
+    "the thread",
+    "the parts of the newest reply, as dmc:reply-reading reads them",
+    "the days since the last reply",
+    "whether an escalation is open",
+    "any bounce naming the participant's address, newer than the last send",
+    "the saved notes, and the number of this email",
+    "the emails sent, and the rounds since the last new ground, the last notes list and the last standing check",
+    "the process feedback given in the thread, and the feedback the operator relayed"
+  ],
+  "hasDefinedTerm": [
+    {
+      "@type": "DefinedTerm",
+      "termCode": "invite",
+      "name": "Send the invitation",
+      "dyad:when": "the outreach starts",
+      "dyad:then": "send the invitation template as the play-book gives it, and wait"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "consent",
+      "name": "Seek consent",
+      "dyad:when": "no clear agreement yet",
+      "dyad:then": "read the reply by dmc:consent; ask once more if it is unclear"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "explore",
+      "name": "Explore the answers",
+      "dyad:when": "consent given, and the reply answers something",
+      "dyad:then": "by the engagement strategy (the play-book's container and strategy, plan revision 28; each change reported to the home as one strategy-change line): say it is from an AI, that they can stop anytime, and why it asks; sum up nothing; give one thing back (offer); and ask at most two questions on new lines by dmc:next-questions"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "offer",
+      "name": "Give one thing back",
+      "dyad:when": "every exploring email, after the participant's own account; or the participant asks for ideas or advice",
+      "dyad:then": "share one short idea that touches what they said: from the knowledge base where one fits (\"Other people have seen…\"), general knowledge only inside a cause test, never alone as the give-back; never their own words or the operator's background or hypotheses, never on the same line as the email's story question; always ending \"Does that match what you've seen, or not?\", asked as the email's test question, never as professional advice or a diagnosis; when they ask for ideas, first ask their own reason if not given"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "try-prompt",
+      "name": "Suggest a prompt to try",
+      "dyad:when": "they have said a cause fits, or named one themselves",
+      "dyad:then": "offer at most one prompt per email, two to four copy-paste lines in plain words built from what they described, introduced as \"Based on what you described, here's something to try with your own AI if you like.\", and ask them to report back what happened; their report is saved as a note on their yes; never client data, nothing touching their firm's policies or professional rules (those escalate), and the email says once that it isn't professional advice"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "answer-service",
+      "name": "Answer about the planned service",
+      "dyad:when": "the participant asks about Prompt Therapy itself, or how this interview works, why Wren asks, or what it gives back",
+      "dyad:then": "answer first, in two or three plain sentences, from the accepted product documents and the play-book's container only, saying a planned service is planned and not yet available, then go on with the email's questions"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "close-loop",
+      "name": "Show what changed",
+      "dyad:when": "the newest reply gave feedback on the process",
+      "dyad:then": "open the next email with one line: \"You said X, so from now on Y\", and make that change, reported as a strategy change"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "relay-received",
+      "name": "Answer a relayed comment",
+      "dyad:when": "the operator relayed feedback the participant gave outside the thread",
+      "dyad:then": "in the next email, within the one-time disclosure rule, acknowledge its general point, show the change, and add \"You can always tell me directly here too, and I'll adjust right away.\""
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "quick-check",
+      "name": "Ask how it is going",
+      "dyad:when": "the first email after consent, or a standing check",
+      "dyad:then": "add one line: \"How's this going so far? A word is enough: too many questions, too repetitive, fine, or something else.\""
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "capture",
+      "name": "Hold a candidate note",
+      "dyad:when": "a reply holds something worth saving",
+      "dyad:then": "hold it as a numbered candidate, decided by dmc:note-capture, in the session and never in a file, for the running notes list"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "off-scope",
+      "name": "Leave private details out",
+      "dyad:when": "a reply holds the participant's job, clients or coworkers in private detail, or family, health, money or legal matters",
+      "dyad:then": "say kindly it will not be used, keep nothing of it, and go on"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "escalate",
+      "name": "Stop and ask the operator",
+      "dyad:when": "distress or safety; the email did not arrive, a bounce naming the participant's address; a question only the operator can answer, such as a promise, a date, a price, early access, an employer's policy or professional rules; an attachment, or anything holding client data; or doubt that touches a container item or the operator's standing escalation list (doubt about strategy is resolved and reported as a strategy change)",
+      "dyad:then": "stop and ask the operator; send nothing until they answer; the nudge and end clocks pause while it is open"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "notes-list",
+      "name": "Send the running notes list",
+      "dyad:when": "about five emails since the last list, or before any wrap-up or break, and candidates are held",
+      "dyad:then": "list the new candidate notes, numbered and quoted exactly, for a yes or no each; nothing is saved without its yes; a note from a reply his own AI drafted is asked 'is this true of you? a yes or a few words of your own' (check-point H1), batched in the one list; on an echo of Wren's own email, ask once for one specific moment in his own words (H2); on a conflict with his first-hand replies, ask which is right (H3); consent changes come from him only (H4)"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "standing-check",
+      "name": "Ask whether it is still useful",
+      "dyad:when": "about five emails since the last standing check",
+      "dyad:then": "add one line inside the normal email: \"Still useful for you? Happy to keep going or stop.\""
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "fatigue-check",
+      "name": "Ask keep going, break or wrap up",
+      "dyad:when": "two replies in a row shorter or slower than their own norm, or saying there is little to add",
+      "dyad:then": "ask one plain question: \"Keep going, take a break, or wrap up?\"; their answer decides"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "break",
+      "name": "Pause for a break",
+      "dyad:when": "they ask for a break",
+      "dyad:then": "pause with no nudges and no watch until they write again or until the date they named"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "change-area",
+      "name": "Change area",
+      "dyad:when": "two rounds in a row brought no new ground: no story, cause or fix the knowledge base lacks, and no \"not\" to a give-back",
+      "dyad:then": "ask about a different kind of task or tool"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "offer-wrap-up",
+      "name": "Offer to wrap up",
+      "dyad:when": "two changes of area in a row brought nothing new",
+      "dyad:then": "offer to wrap up, and they decide; insight running dry never ends it alone"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "follow-up",
+      "name": "Nudge once",
+      "dyad:when": "three days with no reply, and no nudge sent yet",
+      "dyad:then": "one short nudge, with no new questions"
+    },
+    {
+      "@type": "DefinedTerm",
+      "termCode": "end",
+      "name": "End the outreach",
+      "dyad:when": "a stop in any form, a decline or a withdrawal; their choice to wrap up at a fatigue check or a wrap-up offer; seven days of silence after the nudge, when the closing email says the door stays open and a later reply reopens it; or the operator ending it; never an email count or a number of rounds",
+      "dyad:then": "send the running notes list for any candidates not yet asked, thank them, list the saved notes by number with a few knowledge-base tips that touch them, and cancel the check-ins"
+    }
+  ],
+  "dyad:precedence": "escalate, then end on a stop, then off-scope, then consent, then break, then fatigue-check, then offer-wrap-up, then the rest; notes-list and standing-check ride inside an explore email",
+  "dyad:default": "explore",
+  "dyad:judgedBy": {
+    "dyad:kind": "inference",
+    "dyad:implementation": null
+  },
+  "isPartOf": "urn:dyad:craft:prompt-therapy",
+  "dyad:home": "playbooks/user-research.md",
+  "dyad:owner": "prompt-therapy:product-development"
+}
