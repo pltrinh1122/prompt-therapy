@@ -18,7 +18,8 @@
     "the answer",
     "the knowledge base's entries and trees at the pinned commit",
     "the notes already saved",
-    "whether the answer came in their own account or in reply to a test question"
+    "whether the answer came in their own account or in reply to a test question",
+    "whether the reply was drafted by the participant's own AI, and whether its point appears in his own earlier replies"
   ],
   "hasDefinedTerm": [
     {
@@ -26,14 +27,14 @@
       "termCode": "touches-canon",
       "name": "Matches a known entry",
       "dyad:when": "it matches an existing knowledge-base entry",
-      "dyad:then": "hold a candidate note for the running notes list, naming that entry in the record and never in the email; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence"
+      "dyad:then": "hold a candidate note for the running notes list, naming that entry in the record and never in the email; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence; from a reply the participant's own AI drafted, tagged `via: agent-drafted` and counted apart from first-hand notes, never as first-hand, noted `corroborated` where his own earlier replies make the same point; an echo of Wren's own email is no evidence of an effect"
     },
     {
       "@type": "DefinedTerm",
       "termCode": "candidate",
       "name": "A new candidate",
       "dyad:when": "no knowledge-base entry fits: a new symptom, cause, root cause or anchor",
-      "dyad:then": "hold a candidate note for the running notes list, marked in the record as a candidate of that kind; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence"
+      "dyad:then": "hold a candidate note for the running notes list, marked in the record as a candidate of that kind; marked `spontaneous` when they raised it themselves, `prompted` when it answers a test question, a prompted yes counting as weaker evidence; from a reply the participant's own AI drafted, tagged `via: agent-drafted` and counted apart from first-hand notes, never as first-hand, noted `corroborated` where his own earlier replies make the same point; an echo of Wren's own email is no evidence of an effect"
     },
     {
       "@type": "DefinedTerm",

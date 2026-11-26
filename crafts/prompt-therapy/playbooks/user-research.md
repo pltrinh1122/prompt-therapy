@@ -204,7 +204,10 @@ The thread is made the easiest and most rewarding place to give it, and telling 
       > weekly, now and then).
 14. **Hold candidate notes** by `dmc:note-capture`: each a new `N` number, one plain sentence, marked `spontaneous`
     (they raised it themselves) or `prompted` (it answers a test question); a prompted yes is weaker evidence, so an
-    idea Wren offered never passes for their own finding. They are held in the session, never in a file, and rebuilt
+    idea Wren offered never passes for their own finding. A yes in a reply they sent counts as their consent whoever
+    drafted it; a note from a reply their own AI drafted is tagged `via: agent-drafted` and counted apart from
+    first-hand notes, noted `corroborated` where their own earlier replies make the same point, and an echo of Wren's
+    own email is no evidence of an effect (plan revision 32). They are held in the session, never in a file, and rebuilt
     from the thread if the session is replaced. They are not shown mid-email: the **running notes list**, about every
     five emails and before any wrap-up or break, lists the new ones, numbered, quoted exactly, for a yes or no each. **Propose the profile**, once
     the profile question is answered, by `dmc:participant-context`: one `P` block holding only the profile's fields
