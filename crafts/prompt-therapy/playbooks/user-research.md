@@ -40,6 +40,8 @@ Nothing is sent, labelled or changed during the diagnostic. On a fail it stops a
    point of feedback about the research itself.
 3. **Never:** diagnose; name a person; keep anything without consent; claim to be human (every email says it is from
    an AI); give therapy or professional advice; take a give-back from the operator's background or hypotheses.
+   **Names:** an email names the participant only after the participant has given their name in the thread, and
+   anything meant to be passed on names no one: it carries the participant's id and the anonymity line instead.
 4. **Scope of mail.** The one thread, plus bounce notices naming the participant's address.
 5. **No cap and no fixed end.** The interview goes on while the participant is willing and new insight keeps coming,
    and ends only as "When it ends" says.
@@ -138,7 +140,7 @@ The thread is made the easiest and most rewarding place to give it, and telling 
    container.
 
 **C. Invite and capture consent**
-7. **Invite.** Send the template, filling in only `[first name]` and `[operator name]`. Schedule the watch:
+7. **Invite.** Send the template, filling in only `[operator name]` and `[participant id]`. Schedule the watch:
    - after every email Wren sends, and after every reply, the gaps between checks double: 2, 4, 8, 16, 32 minutes,
      then 64 minutes, held there, so a reply waits at most about an hour; `scripts/thread.py gap <n>` gives the n-th;
    - each check reads the one thread for a reply and runs the bounce search (step 17);
@@ -519,10 +521,10 @@ offered.]*
 >
 > Wren (AI), writing on behalf of [operator name]
 
-## The invitation template (`[first name]` and `[operator name]` filled in at sending; nothing else changes)
+## The invitation template (`[operator name]` and `[participant id]` filled in at sending; nothing else changes)
 Subject: Can I ask you about using AI at work?
 
-> Hi [first name],
+> Hello,
 >
 > I'm Wren, an AI assistant. I'm writing from [operator name]'s email account, on their behalf. They're building
 > Prompt Therapy, a small tool that helps people understand why AI helpers act the way they do. They'd love to learn
@@ -535,7 +537,8 @@ Subject: Can I ask you about using AI at work?
 > How it works:
 > - The whole conversation stays in [operator name]'s email.
 > - I'll only save short notes you OK, one at a time, for Prompt Therapy's list of common AI problems and what helps.
->   Your name and email are never in them.
+>   Your name and email are never in them. Here you're known only by an ID, [participant id], made from your email
+>   address by a one-way code, so it can't be turned back into your name or address.
 > - If you like, I may also ask to save a short description of you (your role, years in your field, and how often you
 >   use AI tools), with no name. That's up to you too.
 > - Please don't share anything private about your job, your clients or your coworkers.
